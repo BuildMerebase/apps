@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pitch Deck</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0C0C14;
+  --slide-bg:#0F0F1A;
+  --surface:rgba(255,255,255,0.05);
+  --border:rgba(255,255,255,0.08);
+  --ink:#F2F0FA;
+  --muted:rgba(242,240,250,0.55);
+  --subtle:rgba(242,240,250,0.3);
+  --accent:#7C6FFF;
+  --accent-glow:rgba(124,111,255,0.2);
+  --danger:#FF5F5F;
+}
+
+html,body{
+  height:100%;
+  overflow:hidden;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Loading / Empty ── */
+#loading-screen{
+  position:fixed;inset:0;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;
+  z-index:900;
+}
+.spinner{
+  width:28px;height:28px;
+  border:2px solid var(--border);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin 0.7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-label{font-size:11px;color:var(--muted);letter-spacing:0.07em;text-transform:uppercase}
+
+#empty-screen{
+  position:fixed;inset:0;
+  background:var(--bg);
+  display:none;
+  align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;
+  z-index:800;
+}
+.empty-icon{font-size:2.5rem;opacity:0.25}
+.empty-title{font-size:0.95rem;font-weight:700;color:var(--muted)}
+.empty-sub{font-size:0.8rem;color:var(--subtle)}
+
+/* ── Stage ── */
+#stage{
+  position:fixed;inset:0;
+  overflow:hidden;
+}
+
+/* ── Slides ── */
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:flex-start;
+  padding:80px 10%;
+  opacity:0;
+  transform:translateX(12px);
+  transition:opacity 0.3s ease,transform 0.3s ease;
+  pointer-events:none;
+  overflow:hidden;
+}
+.slide.edit-active{
+  overflow:visible;
+}
+.slide.active{
+  opacity:1;
+  transform:translateX(0);
+  pointer-events:auto;
+}
+
+/* Slide type backgrounds */
+.slide[data-type="title"]{
+  background:var(--bg);
+  align-items:center;
+  text-align:center;
+}
+.slide[data-type="title"]::before{
+  content:'';
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-55%);
+  width:80vw;height:80vh;
+  background:radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 68%);
+  pointer-events:none;
+}
+.slide[data-type="content"]{
+  background:var(--slide-bg);
+}
+.slide[data-type="stats"]{
+  background:var(--slide-bg);
+  align-items:center;
+  text-align:center;
+}
+.slide[data-type="stats"]::before{
+  content:'';
+  position:absolute;
+  top:60%;left:50%;
+  transform:translate(-50%,-50%);
+  width:60vw;height:50vh;
+  background:radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 70%);
+  pointer-events:none;
+  opacity:0.6;
+}
+
+/* ── Title slide blocks ── */
+.block-headline-title{
+  font-size:4rem;
+  font-weight:800;
+  letter-spacing:-0.04em;
+  line-height:1.06;
+  color:var(--ink);
+  position:relative;
+  max-width:18ch;
+}
+.block-tagline{
+  margin-top:1.4rem;
+  font-size:1.4rem;
+  color:var(--muted);
+  letter-spacing:0.01em;
+  position:relative;
+  max-width:32ch;
+}
+.block-byline{
+  position:absolute;
+  bottom:40px;left:50%;
+  transform:translateX(-50%);
+  font-size:0.8rem;
+  color:var(--subtle);
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+
+/* ── Content slide blocks ── */
+.block-headline-content{
+  font-size:2.2rem;
+  font-weight:800;
+  letter-spacing:-0.04em;
+  line-height:1.1;
+  color:var(--ink);
+  margin-bottom:1rem;
+}
+.block-intro{
+  font-size:1rem;
+  color:var(--muted);
+  font-style:italic;
+  margin-bottom:1.5rem;
+  max-width:54ch;
+  line-height:1.6;
+}
+.block-bullet{
+  display:flex;
+  align-items:flex-start;
+  gap:0.8rem;
+  font-size:1.1rem;
+  color:var(--muted);
+  line-height:1.55;
+  margin-bottom:0.85rem;
+  max-width:58ch;
+}
+.block-bullet .bullet-arrow{
+  color:var(--accent);
+  flex-shrink:0;
+  margin-top:0.1em;
+}
+
+/* ── Stats slide blocks ── */
+.block-headline-stats{
+  font-size:2rem;
+  font-weight:800;
+  letter-spacing:-0.04em;
+  color:var(--ink);
+  margin-bottom:2.5rem;
+  position:relative;
+}
+.stats-row{
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  justify-content:center;
+  position:relative;
+}
+.stat-block{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  min-width:120px;
+  padding:8px 16px;
+}
+.stat-value{
+  font-size:3.5rem;
+  font-weight:900;
+  letter-spacing:-0.05em;
+  color:var(--accent);
+  line-height:1;
+}
+.stat-label{
+  font-size:0.7rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:0.14em;
+  color:var(--muted);
+}
+
+/* ── Nav zones (presentation mode) ── */
+#zone-prev{
+  position:fixed;left:0;top:0;bottom:0;width:30%;
+  z-index:20;cursor:w-resize;
+}
+#zone-next{
+  position:fixed;right:0;top:0;bottom:0;width:30%;
+  z-index:20;cursor:e-resize;
+}
+
+/* ── Slide dots ── */
+#dots{
+  position:fixed;
+  bottom:22px;left:50%;
+  transform:translateX(-50%);
+  display:flex;gap:7px;
+  z-index:50;
+  padding:7px 12px;
+  border-radius:20px;
+  background:rgba(12,12,20,0.7);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  pointer-events:auto;
+}
+.dot{
+  width:6px;height:6px;
+  border-radius:50%;
+  background:var(--subtle);
+  cursor:pointer;
+  transition:all 0.2s ease;
+}
+.dot.active{
+  background:var(--accent);
+  width:20px;
+  border-radius:3px;
+}
+
+/* ── Slide counter (presentation) ── */
+#pres-counter{
+  position:fixed;top:16px;right:20px;
+  font-size:11px;font-weight:700;letter-spacing:0.08em;
+  color:var(--subtle);
+  z-index:50;
+  font-variant-numeric:tabular-nums;
+  pointer-events:none;
+}
+
+/* ── Edit button (presentation mode) ── */
+#pres-edit-btn{
+  position:fixed;top:12px;left:16px;
+  z-index:50;
+  font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;
+  padding:5px 11px;border-radius:6px;
+  border:1px solid var(--border);
+  background:rgba(0,0,0,0.45);
+  color:var(--subtle);
+  cursor:pointer;font-family:inherit;
+  transition:all 0.15s;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+#pres-edit-btn:hover{color:var(--ink);border-color:rgba(255,255,255,0.18);background:rgba(0,0,0,0.7)}
+
+/* ── Edit mode top bar ── */
+#edit-bar{
+  position:fixed;top:0;left:0;right:0;
+  height:40px;
+  display:none;
+  align-items:center;
+  gap:6px;
+  padding:0 12px;
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  z-index:200;
+  border-bottom:1px solid var(--border);
+}
+#edit-bar.visible{display:flex}
+
+.eb-counter{
+  font-size:11px;font-weight:700;letter-spacing:0.06em;
+  color:var(--subtle);
+  font-variant-numeric:tabular-nums;
+  margin-right:2px;
+}
+.eb-btn{
+  font-size:11px;font-weight:700;letter-spacing:0.03em;
+  padding:4px 9px;border-radius:5px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.05);
+  color:var(--muted);
+  cursor:pointer;font-family:inherit;
+  transition:all 0.12s;
+  white-space:nowrap;
+}
+.eb-btn:hover{color:var(--ink);border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.1)}
+.eb-btn.danger:hover{color:var(--danger);border-color:rgba(255,95,95,0.4)}
+.eb-sep{flex:1}
+.eb-btn.done{
+  background:rgba(200,155,30,0.18);
+  border-color:rgba(200,155,30,0.4);
+  color:#F0C842;
+}
+.eb-btn.done:hover{background:rgba(200,155,30,0.32);border-color:rgba(200,155,30,0.6);color:#F5D060}
+
+/* ── Edit mode: block wrapper ── */
+.slide.edit-active{
+  pointer-events:auto;
+}
+.slide.edit-active .block-wrap{
+  position:relative;
+}
+.slide.edit-active .block-wrap:hover>.block-delete-btn{
+  opacity:1;
+}
+.block-delete-btn{
+  position:absolute;
+  top:-6px;right:-6px;
+  width:20px;height:20px;
+  border-radius:50%;
+  background:rgba(255,95,95,0.85);
+  border:none;
+  color:#fff;
+  font-size:13px;
+  line-height:1;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;
+  transition:opacity 0.15s;
+  z-index:10;
+  flex-shrink:0;
+}
+.block-delete-btn:hover{background:rgba(255,95,95,1)}
+
+/* ── Editable text ── */
+.slide.edit-active [contenteditable]{
+  outline:none;
+  cursor:text;
+  border-radius:3px;
+  transition:box-shadow 0.15s;
+}
+.slide.edit-active [contenteditable]:hover{
+  box-shadow:0 1px 0 0 rgba(242,240,250,0.2);
+}
+.slide.edit-active [contenteditable]:focus{
+  box-shadow:0 0 0 2px rgba(124,111,255,0.45);
+}
+[contenteditable]:empty:before{
+  content:attr(data-placeholder);
+  opacity:0.3;
+  pointer-events:none;
+}
+
+/* ── Draggable blocks in edit mode ── */
+.slide.edit-active .block-wrap.positioned{
+  user-select:none;
+}
+.slide.edit-active .block-wrap.positioned .drag-handle{
+  position:absolute;
+  top:50%;left:-22px;
+  transform:translateY(-50%);
+  font-size:12px;
+  color:var(--subtle);
+  opacity:0;
+  transition:opacity 0.15s;
+  cursor:grab;
+  line-height:1;
+  padding:4px 3px;
+  border-radius:3px;
+}
+.slide.edit-active .block-wrap.positioned .drag-handle:active{
+  cursor:grabbing;
+}
+.slide.edit-active .block-wrap.positioned:hover .drag-handle{
+  opacity:1;
+}
+.slide.edit-active .block-wrap.positioned:hover{
+  outline:1px dashed rgba(124,111,255,0.3);
+  border-radius:3px;
+}
+.slide.edit-active .block-wrap.dragging{
+  outline:1px dashed rgba(124,111,255,0.6) !important;
+  opacity:0.85;
+  cursor:grabbing !important;
+}
+
+/* ── Edit bottom add buttons ── */
+#slide-add-btns{
+  position:fixed;
+  bottom:60px;left:50%;
+  transform:translateX(-50%);
+  display:none;
+  gap:8px;
+  z-index:150;
+}
+#slide-add-btns.visible{display:flex}
+.add-block-btn{
+  font-size:11px;font-weight:700;letter-spacing:0.04em;
+  padding:5px 13px;border-radius:6px;
+  border:1px solid var(--border);
+  background:rgba(0,0,0,0.55);
+  color:var(--muted);
+  cursor:pointer;font-family:inherit;
+  transition:all 0.15s;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+.add-block-btn:hover{color:var(--ink);border-color:var(--accent);background:rgba(124,111,255,0.12)}
+
+/* ── Template picker overlay ── */
+#template-picker{
+  position:fixed;inset:0;
+  background:rgba(12,12,20,0.88);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  display:none;
+  align-items:center;justify-content:center;
+  flex-direction:column;gap:28px;
+  z-index:500;
+}
+#template-picker.visible{display:flex}
+.tp-title{
+  font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--muted);
+}
+.tp-cards{
+  display:flex;gap:20px;flex-wrap:wrap;justify-content:center;
+}
+.tp-card{
+  width:180px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:rgba(255,255,255,0.04);
+  padding:16px;
+  cursor:pointer;
+  transition:transform 0.18s,border-color 0.18s,background 0.18s;
+  display:flex;flex-direction:column;gap:10px;
+  align-items:center;
+}
+.tp-card:hover{
+  transform:translateY(-4px);
+  border-color:rgba(124,111,255,0.5);
+  background:rgba(124,111,255,0.08);
+}
+.tp-preview{
+  width:148px;height:90px;
+  border-radius:5px;
+  overflow:hidden;
+  background:#0C0C14;
+  position:relative;
+  flex-shrink:0;
+}
+/* Title preview */
+.tp-preview.prev-title{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  background:#0C0C14;
+}
+.tp-preview.prev-title::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 45%, rgba(124,111,255,0.25) 0%, transparent 70%);
+}
+.tp-prev-h1{font-size:10px;font-weight:800;color:#F2F0FA;letter-spacing:-0.03em;position:relative;text-align:center;max-width:100px}
+.tp-prev-tag{font-size:6px;color:rgba(242,240,250,0.5);margin-top:2px;position:relative;text-align:center}
+.tp-prev-by{position:absolute;bottom:5px;font-size:5px;color:rgba(242,240,250,0.3);letter-spacing:0.05em}
+/* Content preview */
+.tp-preview.prev-content{
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;
+  padding:10px 12px;
+  background:#0F0F1A;
+}
+.tp-prev-hl{font-size:8px;font-weight:800;color:#F2F0FA;letter-spacing:-0.02em;margin-bottom:3px}
+.tp-prev-bl{display:flex;align-items:center;gap:3px;margin-bottom:2px}
+.tp-prev-bl-dot{width:4px;height:4px;background:rgba(124,111,255,0.8);border-radius:1px;flex-shrink:0}
+.tp-prev-bl-txt{font-size:5px;color:rgba(242,240,250,0.5)}
+/* Stats preview */
+.tp-preview.prev-stats{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  background:#0F0F1A;
+}
+.tp-prev-shl{font-size:7px;font-weight:800;color:#F2F0FA;letter-spacing:-0.02em;margin-bottom:2px}
+.tp-prev-stats-row{display:flex;gap:6px;justify-content:center}
+.tp-prev-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+.tp-prev-sv{font-size:10px;font-weight:900;color:#7C6FFF;letter-spacing:-0.04em}
+.tp-prev-sl{font-size:4px;color:rgba(242,240,250,0.45);text-transform:uppercase;letter-spacing:0.08em}
+
+.tp-card-name{
+  font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;
+  color:var(--muted);
+}
+.tp-cancel{
+  font-size:11px;color:var(--subtle);cursor:pointer;padding:4px 10px;
+  border-radius:5px;border:1px solid var(--border);background:transparent;
+  font-family:inherit;transition:all 0.12s;
+}
+.tp-cancel:hover{color:var(--muted);border-color:rgba(255,255,255,0.18)}
+
+/* ── Confirm overlay ── */
+#confirm-overlay{
+  position:fixed;inset:0;
+  background:rgba(12,12,20,0.8);
+  backdrop-filter:blur(8px);
+  display:none;
+  align-items:center;justify-content:center;
+  z-index:600;
+}
+#confirm-overlay.visible{display:flex}
+.confirm-box{
+  background:#16161F;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:28px 32px;
+  display:flex;flex-direction:column;gap:18px;
+  max-width:320px;width:90%;
+}
+.confirm-msg{font-size:0.9rem;color:var(--muted);line-height:1.5}
+.confirm-btns{display:flex;gap:8px;justify-content:flex-end}
+.confirm-btn{
+  font-size:12px;font-weight:700;letter-spacing:0.03em;
+  padding:6px 14px;border-radius:6px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.05);
+  color:var(--muted);
+  cursor:pointer;font-family:inherit;transition:all 0.12s;
+}
+.confirm-btn:hover{color:var(--ink);background:rgba(255,255,255,0.1)}
+.confirm-btn.confirm-ok{
+  background:rgba(255,95,95,0.15);
+  border-color:rgba(255,95,95,0.4);
+  color:var(--danger);
+}
+.confirm-btn.confirm-ok:hover{background:rgba(255,95,95,0.28)}
+
+/* ── Cursor hide when idle ── */
+body.hide-cursor,body.hide-cursor *{cursor:none!important}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="loading-label">Loading deck…</div>
+</div>
+
+<div id="empty-screen">
+  <div class="empty-icon">&#9654;</div>
+  <div class="empty-title">No slides yet</div>
+  <div class="empty-sub">Press Edit to start building your deck.</div>
+</div>
+
+<div id="stage"></div>
+
+<!-- Presentation mode controls -->
+<div id="zone-prev"></div>
+<div id="zone-next"></div>
+<div id="dots"></div>
+<div id="pres-counter"></div>
+<button id="pres-edit-btn">Edit</button>
+
+<!-- Edit mode top bar -->
+<div id="edit-bar">
+  <span class="eb-counter" id="eb-counter">1 / 1</span>
+  <button class="eb-btn" id="eb-prev">&#8592;</button>
+  <button class="eb-btn" id="eb-next">&#8594;</button>
+  <button class="eb-btn" id="eb-add">+ Add Slide</button>
+  <button class="eb-btn danger" id="eb-delete">Delete Slide</button>
+  <div class="eb-sep"></div>
+  <button class="eb-btn done" id="eb-done">Done</button>
+</div>
+
+<!-- Edit mode add-block buttons -->
+<div id="slide-add-btns"></div>
+
+<!-- Template picker -->
+<div id="template-picker">
+  <div class="tp-title">Choose a slide type</div>
+  <div class="tp-cards">
+    <div class="tp-card" data-ttype="title">
+      <div class="tp-preview prev-title">
+        <div class="tp-prev-h1">Your Headline</div>
+        <div class="tp-prev-tag">A short tagline</div>
+        <div class="tp-prev-by">Company · 2026</div>
+      </div>
+      <div class="tp-card-name">Title</div>
+    </div>
+    <div class="tp-card" data-ttype="content">
+      <div class="tp-preview prev-content">
+        <div class="tp-prev-hl">The Problem</div>
+        <div class="tp-prev-bl"><div class="tp-prev-bl-dot"></div><div class="tp-prev-bl-txt">First key point here</div></div>
+        <div class="tp-prev-bl"><div class="tp-prev-bl-dot"></div><div class="tp-prev-bl-txt">Second key point here</div></div>
+        <div class="tp-prev-bl"><div class="tp-prev-bl-dot"></div><div class="tp-prev-bl-txt">Third key point here</div></div>
+      </div>
+      <div class="tp-card-name">Content</div>
+    </div>
+    <div class="tp-card" data-ttype="stats">
+      <div class="tp-preview prev-stats">
+        <div class="tp-prev-shl">Traction</div>
+        <div class="tp-prev-stats-row">
+          <div class="tp-prev-stat"><div class="tp-prev-sv">$2M</div><div class="tp-prev-sl">ARR</div></div>
+          <div class="tp-prev-stat"><div class="tp-prev-sv">140%</div><div class="tp-prev-sl">NRR</div></div>
+          <div class="tp-prev-stat"><div class="tp-prev-sv">320</div><div class="tp-prev-sl">Cust.</div></div>
+        </div>
+      </div>
+      <div class="tp-card-name">Stats</div>
+    </div>
+  </div>
+  <button class="tp-cancel" id="tp-cancel">Cancel</button>
+</div>
+
+<!-- Confirm overlay -->
+<div id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-msg" id="confirm-msg">Are you sure?</div>
+    <div class="confirm-btns">
+      <button class="confirm-btn" id="confirm-no">Cancel</button>
+      <button class="confirm-btn confirm-ok" id="confirm-yes">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════
+   MOCK DATA
+═══════════════════════════════════════ */
+const MOCK_DECK = {
+  slides: [
+    {
+      id: genId(),
+      type: 'title',
+      blocks: [
+        { id: genId(), kind: 'headline', text: 'The Operating System for Modern Teams', x: 50, y: 38 },
+        { id: genId(), kind: 'tagline',  text: 'Work smarter. Move faster. Stay aligned.', x: 50, y: 56 },
+        { id: genId(), kind: 'byline',   text: 'Acme Corp · Series A · 2026', x: 50, y: 74 }
+      ]
+    },
+    {
+      id: genId(),
+      type: 'content',
+      blocks: [
+        { id: genId(), kind: 'headline', text: 'The Problem', x: 6, y: 8 },
+        { id: genId(), kind: 'intro',    text: 'Teams are drowning in disconnected tools.', x: 6, y: 26 },
+        { id: genId(), kind: 'bullet',   text: '4+ hours wasted per week switching between apps', x: 6, y: 40 },
+        { id: genId(), kind: 'bullet',   text: 'Critical context buried in Slack threads', x: 6, y: 51 },
+        { id: genId(), kind: 'bullet',   text: 'New hires take 3× longer to onboard than they should', x: 6, y: 62 }
+      ]
+    },
+    {
+      id: genId(),
+      type: 'stats',
+      blocks: [
+        { id: genId(), kind: 'headline', text: 'Traction', x: 50, y: 12 },
+        { id: genId(), kind: 'stat', value: '$2M',  label: 'ARR',       x: 20, y: 52 },
+        { id: genId(), kind: 'stat', value: '140%', label: 'NRR',       x: 50, y: 52 },
+        { id: genId(), kind: 'stat', value: '320',  label: 'Customers', x: 80, y: 52 }
+      ]
+    },
+    {
+      id: genId(),
+      type: 'content',
+      blocks: [
+        { id: genId(), kind: 'headline', text: 'Our Solution', x: 6, y: 8 },
+        { id: genId(), kind: 'intro',    text: 'One unified context layer across all your tools.', x: 6, y: 26 },
+        { id: genId(), kind: 'bullet',   text: 'Connects Slack, Notion, Jira and 40+ integrations', x: 6, y: 40 },
+        { id: genId(), kind: 'bullet',   text: 'Auto-surfaces relevant history when you need it', x: 6, y: 51 },
+        { id: genId(), kind: 'bullet',   text: 'Reduces onboarding time by 60%', x: 6, y: 62 }
+      ]
+    },
+    {
+      id: genId(),
+      type: 'stats',
+      blocks: [
+        { id: genId(), kind: 'headline', text: 'The Ask', x: 50, y: 12 },
+        { id: genId(), kind: 'stat', value: '$5M',  label: 'Round',      x: 20, y: 52 },
+        { id: genId(), kind: 'stat', value: '18mo', label: 'Runway',     x: 50, y: 52 },
+        { id: genId(), kind: 'stat', value: '$8M',  label: 'ARR target', x: 80, y: 52 }
+      ]
+    },
+    {
+      id: genId(),
+      type: 'title',
+      blocks: [
+        { id: genId(), kind: 'headline', text: "Let's build this together.", x: 50, y: 38 },
+        { id: genId(), kind: 'tagline',  text: 'hello@acme.com', x: 50, y: 56 },
+        { id: genId(), kind: 'byline',   text: 'acme.com', x: 50, y: 74 }
+      ]
+    }
+  ]
+};
+
+/* ═══════════════════════════════════════
+   KV STORAGE
+═══════════════════════════════════════ */
+const MB = window.MB;
+const DB = MB ? {
+  async load() {
+    const r = await fetch(`${MB.api}/data?app_id=${MB.app_id}&key=deck`, {credentials:'include'});
+    const {value} = await r.json();
+    return value || null;
+  },
+  async save(deck) {
+    await fetch(`${MB.api}/data`, {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({app_id:MB.app_id, key:'deck', value:deck})
+    });
+  }
+} : {
+  async load() { return JSON.parse(JSON.stringify(MOCK_DECK)); },
+  async save(d) { Object.assign(MOCK_DECK, d); }
+};
+
+/* ═══════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════ */
+function genId() {
+  return Math.random().toString(36).slice(2,8);
+}
+
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+/* Return the x positions for N stat blocks evenly spaced */
+function statXPositions(n) {
+  if (n === 1) return [50];
+  if (n === 2) return [28, 72];
+  if (n === 3) return [20, 50, 80];
+  if (n === 4) return [14, 38, 62, 86];
+  // Fallback for > 4: evenly distribute
+  return Array.from({length: n}, (_, i) => Math.round(10 + (80 / (n - 1)) * i));
+}
+
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+let deck = null;
+let currentIdx = 0;
+let editMode = false;
+let saveTimer = null;
+
+/* ═══════════════════════════════════════
+   ELEMENTS
+═══════════════════════════════════════ */
+const stageEl        = document.getElementById('stage');
+const dotsEl         = document.getElementById('dots');
+const presCounterEl  = document.getElementById('pres-counter');
+const presEditBtn    = document.getElementById('pres-edit-btn');
+const editBar        = document.getElementById('edit-bar');
+const ebCounter      = document.getElementById('eb-counter');
+const ebPrevBtn      = document.getElementById('eb-prev');
+const ebNextBtn      = document.getElementById('eb-next');
+const ebAddBtn       = document.getElementById('eb-add');
+const ebDeleteBtn    = document.getElementById('eb-delete');
+const ebDoneBtn      = document.getElementById('eb-done');
+const slideAddBtns   = document.getElementById('slide-add-btns');
+const tplPicker      = document.getElementById('template-picker');
+const tpCancel       = document.getElementById('tp-cancel');
+const loadingScreen  = document.getElementById('loading-screen');
+const emptyScreen    = document.getElementById('empty-screen');
+const zonePrev       = document.getElementById('zone-prev');
+const zoneNext       = document.getElementById('zone-next');
+const confirmOverlay = document.getElementById('confirm-overlay');
+const confirmMsg     = document.getElementById('confirm-msg');
+const confirmYes     = document.getElementById('confirm-yes');
+const confirmNo      = document.getElementById('confirm-no');
+
+/* ═══════════════════════════════════════
+   SLIDE RENDERING
+═══════════════════════════════════════ */
+function renderSlideEl(slide, idx, isEdit) {
+  const el = document.createElement('div');
+  el.className = 'slide';
+  el.dataset.type = slide.type;
+  el.dataset.idx = idx;
+  if (isEdit) el.classList.add('edit-active');
+
+  if (slide.type === 'title') {
+    renderTitleSlide(el, slide, isEdit);
+  } else if (slide.type === 'content') {
+    renderContentSlide(el, slide, isEdit);
+  } else if (slide.type === 'stats') {
+    renderStatsSlide(el, slide, isEdit);
+  }
+
+  return el;
+}
+
+/* Apply absolute positioning to a block-wrap element if x/y are defined */
+function applyBlockPosition(wrap, block, isEdit) {
+  if (block.x == null || block.y == null) return; // fall back to flow layout
+  wrap.classList.add('positioned');
+  wrap.style.position = 'absolute';
+  wrap.style.left = block.x + '%';
+  wrap.style.top  = block.y + '%';
+
+  // Center horizontally when x is near the middle (40–60) or for stat blocks
+  const isCentered = (block.kind === 'stat') || (block.x > 40 && block.x < 60);
+  wrap.style.transform = isCentered ? 'translateX(-50%)' : 'none';
+
+  if (isEdit) {
+    const handle = document.createElement('div');
+    handle.className = 'drag-handle';
+    handle.textContent = '⠿';
+    handle.setAttribute('title', 'Drag to reposition');
+    wrap.appendChild(handle);
+    attachDragHandler(handle, wrap, block);
+  }
+}
+
+/* Attach drag-to-reposition behaviour — only fires from the drag handle */
+function attachDragHandler(handle, wrap, block) {
+  handle.addEventListener('mousedown', onBlockMouseDown);
+
+  function onBlockMouseDown(e) {
+    if (!editMode) return;
+    e.preventDefault(); // prevent text selection while dragging
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startBX = block.x;
+    const startBY = block.y;
+    let dragging = false;
+
+    const slideEl = wrap.closest('.slide');
+    const rect = slideEl.getBoundingClientRect();
+
+    function onMouseMove(e2) {
+      const dx = e2.clientX - startX;
+      const dy = e2.clientY - startY;
+      if (!dragging && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+      dragging = true;
+      wrap.classList.add('dragging');
+
+      const newX = Math.min(98, Math.max(2, startBX + (dx / rect.width) * 100));
+      const newY = Math.min(98, Math.max(2, startBY + (dy / rect.height) * 100));
+
+      wrap.style.left = newX + '%';
+      wrap.style.top  = newY + '%';
+
+      // Keep centering transform in sync
+      const isCentered = (block.kind === 'stat') || (newX > 40 && newX < 60);
+      wrap.style.transform = isCentered ? 'translateX(-50%)' : 'none';
+    }
+
+    function onMouseUp(e2) {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      wrap.classList.remove('dragging');
+
+      const dx = e2.clientX - startX;
+      const dy = e2.clientY - startY;
+      if (!dragging || (Math.abs(dx) < 4 && Math.abs(dy) < 4)) {
+        // Treat as click — do nothing, let events propagate
+        return;
+      }
+
+      // Commit new position
+      const newX = Math.min(98, Math.max(2, startBX + (dx / rect.width) * 100));
+      const newY = Math.min(98, Math.max(2, startBY + (dy / rect.height) * 100));
+      block.x = Math.round(newX * 10) / 10;
+      block.y = Math.round(newY * 10) / 10;
+      scheduleSave();
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+}
+
+function renderTitleSlide(el, slide, isEdit) {
+  const headline = slide.blocks.find(b => b.kind === 'headline');
+  const tagline  = slide.blocks.find(b => b.kind === 'tagline');
+  const byline   = slide.blocks.find(b => b.kind === 'byline');
+
+  if (headline) {
+    el.appendChild(makeBlockWrap(slide, headline, isEdit, () => {
+      const d = document.createElement('div');
+      d.className = 'block-headline-title';
+      if (isEdit) setupEditable(d, headline, 'headline', false);
+      else d.textContent = headline.text || '';
+      return d;
+    }));
+  }
+
+  if (tagline) {
+    el.appendChild(makeBlockWrap(slide, tagline, isEdit, () => {
+      const d = document.createElement('div');
+      d.className = 'block-tagline';
+      if (isEdit) setupEditable(d, tagline, 'Tagline…', false);
+      else d.textContent = tagline.text || '';
+      return d;
+    }));
+  } else if (isEdit) {
+    el.appendChild(makeAddInlineBtn('+ tagline', () => addBlock(slide, {id:genId(),kind:'tagline',text:'A short tagline',x:50,y:56})));
+  }
+
+  if (byline) {
+    el.appendChild(makeBlockWrap(slide, byline, isEdit, () => {
+      const d = document.createElement('div');
+      d.className = 'block-byline';
+      if (isEdit) setupEditable(d, byline, 'Byline…', false);
+      else d.textContent = byline.text || '';
+      return d;
+    }));
+  } else if (isEdit) {
+    el.appendChild(makeAddInlineBtn('+ byline', () => addBlock(slide, {id:genId(),kind:'byline',text:'Company · 2026',x:50,y:74})));
+  }
+}
+
+function renderContentSlide(el, slide, isEdit) {
+  const headline = slide.blocks.find(b => b.kind === 'headline');
+  const intro    = slide.blocks.find(b => b.kind === 'intro');
+  const bullets  = slide.blocks.filter(b => b.kind === 'bullet');
+
+  if (headline) {
+    el.appendChild(makeBlockWrap(slide, headline, isEdit, () => {
+      const d = document.createElement('div');
+      d.className = 'block-headline-content';
+      if (isEdit) setupEditable(d, headline, 'Headline…', false);
+      else d.textContent = headline.text || '';
+      return d;
+    }));
+  }
+
+  if (intro) {
+    el.appendChild(makeBlockWrap(slide, intro, isEdit, () => {
+      const d = document.createElement('div');
+      d.className = 'block-intro';
+      if (isEdit) setupEditable(d, intro, 'Intro sentence…', false);
+      else d.textContent = intro.text || '';
+      return d;
+    }));
+  } else if (isEdit) {
+    el.appendChild(makeAddInlineBtn('+ intro', () => addBlock(slide, {id:genId(),kind:'intro',text:'',x:6,y:26})));
+  }
+
+  bullets.forEach(b => {
+    el.appendChild(makeBlockWrap(slide, b, isEdit, () => {
+      const d = document.createElement('div');
+      d.className = 'block-bullet';
+      const arrow = document.createElement('span');
+      arrow.className = 'bullet-arrow';
+      arrow.textContent = '→';
+      const span = document.createElement('span');
+      if (isEdit) setupEditable(span, b, 'Bullet point…', false);
+      else span.textContent = b.text || '';
+      d.appendChild(arrow);
+      d.appendChild(span);
+      return d;
+    }));
+  });
+}
+
+function renderStatsSlide(el, slide, isEdit) {
+  const headline = slide.blocks.find(b => b.kind === 'headline');
+  const stats    = slide.blocks.filter(b => b.kind === 'stat');
+
+  if (headline) {
+    el.appendChild(makeBlockWrap(slide, headline, isEdit, () => {
+      const d = document.createElement('div');
+      d.className = 'block-headline-stats';
+      if (isEdit) setupEditable(d, headline, 'Headline…', false);
+      else d.textContent = headline.text || '';
+      return d;
+    }));
+  }
+
+  if (stats.length > 0) {
+    // If all stats have x/y coords, render them individually as positioned blocks.
+    // Otherwise fall back to the flow stats-row.
+    const allPositioned = stats.every(b => b.x != null && b.y != null);
+    if (allPositioned) {
+      stats.forEach(b => {
+        el.appendChild(makeBlockWrap(slide, b, isEdit, () => {
+          const blk = document.createElement('div');
+          blk.className = 'stat-block';
+          const valEl = document.createElement('div');
+          valEl.className = 'stat-value';
+          const lblEl = document.createElement('div');
+          lblEl.className = 'stat-label';
+          if (isEdit) {
+            setupEditable(valEl, b, '0', false, true /* isValue */);
+            setupEditable(lblEl, b, 'Label', false, false /* isLabel */);
+          } else {
+            valEl.textContent = b.value || '';
+            lblEl.textContent = b.label || '';
+          }
+          blk.appendChild(valEl);
+          blk.appendChild(lblEl);
+          return blk;
+        }));
+      });
+    } else {
+      const row = document.createElement('div');
+      row.className = 'stats-row';
+      stats.forEach(b => {
+        const wrap = makeBlockWrap(slide, b, isEdit, () => {
+          const blk = document.createElement('div');
+          blk.className = 'stat-block';
+          const valEl = document.createElement('div');
+          valEl.className = 'stat-value';
+          const lblEl = document.createElement('div');
+          lblEl.className = 'stat-label';
+          if (isEdit) {
+            setupEditable(valEl, b, '0', false, true /* isValue */);
+            setupEditable(lblEl, b, 'Label', false, false /* isLabel */);
+          } else {
+            valEl.textContent = b.value || '';
+            lblEl.textContent = b.label || '';
+          }
+          blk.appendChild(valEl);
+          blk.appendChild(lblEl);
+          return blk;
+        });
+        row.appendChild(wrap);
+      });
+      el.appendChild(row);
+    }
+  }
+}
+
+/* Create a wrapper div for a block. If edit mode, adds the × button. */
+function makeBlockWrap(slide, block, isEdit, innerFn) {
+  const wrap = document.createElement('div');
+  wrap.className = 'block-wrap';
+  wrap.dataset.blockId = block.id;
+
+  const inner = innerFn();
+  wrap.appendChild(inner);
+
+  if (isEdit && block.kind !== 'headline') {
+    const btn = document.createElement('button');
+    btn.className = 'block-delete-btn';
+    btn.setAttribute('aria-label', 'Delete block');
+    btn.innerHTML = '&times;';
+    btn.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      e.preventDefault();
+    });
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      deleteBlock(slide, block.id);
+    });
+    wrap.appendChild(btn);
+  }
+
+  // Apply absolute positioning if block has x/y
+  applyBlockPosition(wrap, block, isEdit);
+
+  return wrap;
+}
+
+/* Inline "add" button used for optional single blocks (tagline, byline, intro) */
+function makeAddInlineBtn(label, onClick) {
+  const btn = document.createElement('button');
+  btn.className = 'add-block-btn';
+  btn.style.marginTop = '8px';
+  btn.textContent = label;
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+/* Set up a contenteditable element bound to a block's text or value/label */
+function setupEditable(el, block, placeholder, multiLine, isStatValue) {
+  el.contentEditable = 'true';
+  el.spellcheck = false;
+  el.dataset.placeholder = placeholder;
+
+  // Set initial text
+  if (isStatValue === true) {
+    el.textContent = block.value || '';
+  } else if (isStatValue === false && block.kind === 'stat') {
+    el.textContent = block.label || '';
+  } else {
+    el.textContent = block.text || '';
+  }
+
+  // Enter = blur for single-line elements
+  if (!multiLine) {
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        el.blur();
+      }
+    });
+  }
+
+  el.addEventListener('blur', () => {
+    const val = el.textContent.trim();
+
+    if (block.kind === 'stat') {
+      if (isStatValue === true) {
+        block.value = val;
+      } else {
+        block.label = val;
+      }
+    } else {
+      block.text = val;
+    }
+
+    // Auto-remove if empty (except headline)
+    if (block.kind !== 'headline' && val === '') {
+      // Find the slide for this block
+      const slide = deck.slides.find(s => s.blocks && s.blocks.some(b => b.id === block.id));
+      if (slide) {
+        deleteBlock(slide, block.id);
+        return;
+      }
+    }
+
+    scheduleSave();
+  });
+}
+
+/* ═══════════════════════════════════════
+   DECK RENDER (all slides as DOM)
+═══════════════════════════════════════ */
+function renderDeck() {
+  stageEl.querySelectorAll('.slide').forEach(el => el.remove());
+  dotsEl.innerHTML = '';
+
+  if (!deck || !deck.slides || deck.slides.length === 0) {
+    emptyScreen.style.display = 'flex';
+    updateCounters();
+    return;
+  }
+  emptyScreen.style.display = 'none';
+
+  deck.slides.forEach((slide, i) => {
+    const el = renderSlideEl(slide, i, false);
+    stageEl.appendChild(el);
+
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(dot);
+  });
+
+  // Clamp currentIdx
+  if (currentIdx >= deck.slides.length) currentIdx = deck.slides.length - 1;
+  if (currentIdx < 0) currentIdx = 0;
+
+  activateSlide(currentIdx, false);
+}
+
+function activateSlide(idx, animate) {
+  const slides = stageEl.querySelectorAll('.slide');
+  const dots   = dotsEl.querySelectorAll('.dot');
+
+  slides.forEach((el, i) => {
+    el.classList.remove('active');
+    // Reset transform direction for animation
+    if (animate && i !== idx) {
+      el.style.transition = 'none';
+    }
+  });
+
+  if (animate) {
+    // Force reflow
+    slides[idx] && void slides[idx].offsetWidth;
+    slides.forEach(el => { el.style.transition = ''; });
+  }
+
+  slides.forEach((el, i) => {
+    if (i === idx) el.classList.add('active');
+  });
+
+  dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+  currentIdx = idx;
+  updateCounters();
+  if (editMode) updateAddBtns();
+}
+
+function updateCounters() {
+  const total = deck && deck.slides ? deck.slides.length : 0;
+  const num = total > 0 ? `${currentIdx + 1} / ${total}` : '0 / 0';
+  presCounterEl.textContent = num;
+  ebCounter.textContent = num;
+}
+
+function goTo(idx) {
+  if (!deck || !deck.slides) return;
+  const max = deck.slides.length - 1;
+  if (idx < 0 || idx > max) return;
+  activateSlide(idx, true);
+}
+
+function next() { goTo(currentIdx + 1); }
+function prev() { goTo(currentIdx - 1); }
+
+/* ═══════════════════════════════════════
+   EDIT MODE
+═══════════════════════════════════════ */
+function enterEdit() {
+  editMode = true;
+  // Swap nav zones off
+  zonePrev.style.display = 'none';
+  zoneNext.style.display = 'none';
+  dotsEl.style.display = 'none';
+  presCounterEl.style.display = 'none';
+  presEditBtn.style.display = 'none';
+  editBar.classList.add('visible');
+
+  renderEditSlide(currentIdx);
+  updateAddBtns();
+}
+
+function exitEdit() {
+  editMode = false;
+  zonePrev.style.display = '';
+  zoneNext.style.display = '';
+  dotsEl.style.display = '';
+  presCounterEl.style.display = '';
+  presEditBtn.style.display = '';
+  editBar.classList.remove('visible');
+  slideAddBtns.classList.remove('visible');
+  slideAddBtns.innerHTML = '';
+
+  // Commit any pending contenteditable changes by blurring
+  const focused = document.activeElement;
+  if (focused && focused.contentEditable === 'true') focused.blur();
+
+  // Flush save
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    DB.save(deepClone(deck));
+  }
+
+  renderDeck();
+}
+
+/* Re-render just the current slide in edit mode */
+function renderEditSlide(idx) {
+  // Replace existing edit slide
+  const existing = stageEl.querySelector('.slide.edit-active');
+  if (existing) existing.remove();
+
+  const slide = deck.slides[idx];
+  if (!slide) return;
+
+  // Deactivate all presentation slides so only the edit slide is active
+  stageEl.querySelectorAll('.slide').forEach(el => el.classList.remove('active'));
+
+  const el = renderSlideEl(slide, idx, true);
+  el.classList.add('active');
+  stageEl.appendChild(el);
+  updateCounters();
+  updateAddBtns();
+}
+
+function updateAddBtns() {
+  slideAddBtns.innerHTML = '';
+  const slide = deck.slides && deck.slides[currentIdx];
+  if (!slide || !editMode) {
+    slideAddBtns.classList.remove('visible');
+    return;
+  }
+
+  if (slide.type === 'content') {
+    const btn = document.createElement('button');
+    btn.className = 'add-block-btn';
+    btn.textContent = '+ Add bullet';
+    btn.addEventListener('click', () => {
+      const bullets = slide.blocks.filter(b => b.kind === 'bullet');
+      const lastY = bullets.length > 0 && bullets[bullets.length - 1].y != null
+        ? bullets[bullets.length - 1].y
+        : 29; // 40 - 11 so first bullet lands at 40
+      addBlock(slide, {id:genId(), kind:'bullet', text:'', x:6, y:lastY + 11});
+    });
+    slideAddBtns.appendChild(btn);
+    slideAddBtns.classList.add('visible');
+  } else if (slide.type === 'stats') {
+    const btn = document.createElement('button');
+    btn.className = 'add-block-btn';
+    btn.textContent = '+ Add stat';
+    btn.addEventListener('click', () => {
+      const currentStats = slide.blocks.filter(b => b.kind === 'stat');
+      const newCount = currentStats.length + 1;
+      const xs = statXPositions(newCount);
+      // Re-assign x positions to all existing stats
+      currentStats.forEach((b, i) => { b.x = xs[i]; });
+      // New stat gets the last x position
+      addBlock(slide, {id:genId(), kind:'stat', value:'', label:'', x:xs[newCount - 1], y:52});
+    });
+    slideAddBtns.appendChild(btn);
+    slideAddBtns.classList.add('visible');
+  } else {
+    slideAddBtns.classList.remove('visible');
+  }
+}
+
+function addBlock(slide, block) {
+  // Blur any active editable first
+  const focused = document.activeElement;
+  if (focused && focused.contentEditable === 'true') focused.blur();
+
+  slide.blocks.push(block);
+  renderEditSlide(currentIdx);
+  scheduleSave();
+}
+
+function deleteBlock(slide, blockId) {
+  const idx = slide.blocks.findIndex(b => b.id === blockId);
+  if (idx === -1) return;
+  if (slide.blocks[idx].kind === 'headline') return; // Never remove headline
+  slide.blocks.splice(idx, 1);
+
+  // After deleting a stat, recalculate x positions for remaining stats
+  if (slide.type === 'stats') {
+    const remainingStats = slide.blocks.filter(b => b.kind === 'stat');
+    if (remainingStats.length > 0) {
+      const xs = statXPositions(remainingStats.length);
+      remainingStats.forEach((b, i) => { b.x = xs[i]; });
+    }
+  }
+
+  renderEditSlide(currentIdx);
+  scheduleSave();
+}
+
+/* ═══════════════════════════════════════
+   TEMPLATE PICKER
+═══════════════════════════════════════ */
+let tplCallback = null;
+
+function showTemplatePicker(cb) {
+  tplCallback = cb;
+  tplPicker.classList.add('visible');
+}
+
+function hideTemplatePicker() {
+  tplPicker.classList.remove('visible');
+  tplCallback = null;
+}
+
+tplPicker.querySelectorAll('.tp-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const type = card.dataset.ttype;
+    const cb = tplCallback;
+    hideTemplatePicker();
+    if (cb) cb(type);
+  });
+});
+
+tpCancel.addEventListener('click', hideTemplatePicker);
+
+function newSlideOfType(type) {
+  let blocks = [];
+  if (type === 'title') {
+    blocks = [
+      {id:genId(), kind:'headline', text:'Your Headline', x:50, y:38},
+      {id:genId(), kind:'tagline',  text:'A short tagline that explains the vision', x:50, y:56},
+      {id:genId(), kind:'byline',   text:'Company · 2026', x:50, y:74}
+    ];
+  } else if (type === 'content') {
+    blocks = [
+      {id:genId(), kind:'headline', text:'New Slide', x:6, y:8},
+      {id:genId(), kind:'bullet',   text:'First point', x:6, y:40},
+      {id:genId(), kind:'bullet',   text:'Second point', x:6, y:51}
+    ];
+  } else if (type === 'stats') {
+    blocks = [
+      {id:genId(), kind:'headline', text:'Stats', x:50, y:12},
+      {id:genId(), kind:'stat',     value:'0',   label:'Metric 1', x:20, y:52},
+      {id:genId(), kind:'stat',     value:'0%',  label:'Metric 2', x:50, y:52},
+      {id:genId(), kind:'stat',     value:'0',   label:'Metric 3', x:80, y:52}
+    ];
+  }
+  return {id:genId(), type, blocks};
+}
+
+/* ═══════════════════════════════════════
+   CONFIRM DIALOG
+═══════════════════════════════════════ */
+function showConfirm(message) {
+  return new Promise(resolve => {
+    confirmMsg.textContent = message;
+    confirmOverlay.classList.add('visible');
+    const cleanup = (result) => {
+      confirmOverlay.classList.remove('visible');
+      confirmYes.removeEventListener('click', onYes);
+      confirmNo.removeEventListener('click', onNo);
+      resolve(result);
+    };
+    const onYes = () => cleanup(true);
+    const onNo  = () => cleanup(false);
+    confirmYes.addEventListener('click', onYes);
+    confirmNo.addEventListener('click', onNo);
+  });
+}
+
+/* ═══════════════════════════════════════
+   AUTO-SAVE
+═══════════════════════════════════════ */
+function scheduleSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    DB.save(deepClone(deck)).catch(e => console.error('Save failed', e));
+  }, 800);
+}
+
+/* ═══════════════════════════════════════
+   EDIT BAR ACTIONS
+═══════════════════════════════════════ */
+ebPrevBtn.addEventListener('click', () => {
+  if (!editMode || currentIdx === 0) return;
+  const focused = document.activeElement;
+  if (focused && focused.contentEditable === 'true') focused.blur();
+  currentIdx--;
+  renderEditSlide(currentIdx);
+  // Also update non-edit slides
+  stageEl.querySelectorAll('.slide:not(.edit-active)').forEach(el => el.classList.remove('active'));
+  updateCounters();
+});
+
+ebNextBtn.addEventListener('click', () => {
+  if (!editMode || !deck || currentIdx >= deck.slides.length - 1) return;
+  const focused = document.activeElement;
+  if (focused && focused.contentEditable === 'true') focused.blur();
+  currentIdx++;
+  renderEditSlide(currentIdx);
+  stageEl.querySelectorAll('.slide:not(.edit-active)').forEach(el => el.classList.remove('active'));
+  updateCounters();
+});
+
+ebAddBtn.addEventListener('click', () => {
+  showTemplatePicker(type => {
+    const focused = document.activeElement;
+    if (focused && focused.contentEditable === 'true') focused.blur();
+    const slide = newSlideOfType(type);
+    deck.slides.splice(currentIdx + 1, 0, slide);
+    currentIdx++;
+    renderDeck();
+    enterEdit();
+    scheduleSave();
+  });
+});
+
+ebDeleteBtn.addEventListener('click', async () => {
+  if (!deck || deck.slides.length === 0) return;
+  const ok = await showConfirm('Delete this slide? This cannot be undone.');
+  if (!ok) return;
+  deck.slides.splice(currentIdx, 1);
+  if (currentIdx >= deck.slides.length) currentIdx = Math.max(0, deck.slides.length - 1);
+  renderEditSlide(currentIdx);
+  updateCounters();
+  scheduleSave();
+});
+
+ebDoneBtn.addEventListener('click', () => {
+  exitEdit();
+});
+
+/* ═══════════════════════════════════════
+   PRESENTATION CONTROLS
+═══════════════════════════════════════ */
+presEditBtn.addEventListener('click', enterEdit);
+
+zonePrev.addEventListener('click', prev);
+zoneNext.addEventListener('click', next);
+
+document.addEventListener('keydown', e => {
+  // Skip if typing in contenteditable
+  if (e.target.contentEditable === 'true') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  switch (e.key) {
+    case 'ArrowRight':
+    case 'ArrowDown':
+    case ' ':
+      if (!editMode) { e.preventDefault(); next(); }
+      break;
+    case 'ArrowLeft':
+    case 'ArrowUp':
+      if (!editMode) { e.preventDefault(); prev(); }
+      break;
+    case 'f':
+    case 'F':
+      toggleFullscreen();
+      break;
+    case 'Escape':
+      if (editMode) exitEdit();
+      break;
+  }
+});
+
+/* ═══════════════════════════════════════
+   FULLSCREEN
+═══════════════════════════════════════ */
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+}
+
+/* ═══════════════════════════════════════
+   IDLE CURSOR HIDE
+═══════════════════════════════════════ */
+let cursorTimer = null;
+function resetCursor() {
+  document.body.classList.remove('hide-cursor');
+  clearTimeout(cursorTimer);
+  if (!editMode) {
+    cursorTimer = setTimeout(() => document.body.classList.add('hide-cursor'), 2500);
+  }
+}
+document.addEventListener('mousemove', resetCursor);
+resetCursor();
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+async function init() {
+  loadingScreen.style.display = 'flex';
+  try {
+    let data = await DB.load();
+    if (!data) {
+      data = deepClone(MOCK_DECK);
+      await DB.save(data);
+    }
+    deck = data;
+    currentIdx = 0;
+    renderDeck();
+  } catch (e) {
+    console.error('Failed to load deck:', e);
+    deck = deepClone(MOCK_DECK);
+    renderDeck();
+  } finally {
+    loadingScreen.style.display = 'none';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

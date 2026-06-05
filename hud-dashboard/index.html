@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD DASHBOARD</title>
+<script>
+/* window.MB injected here by platform */
+</script>
+<style>
+:root {
+  --bg:      #000810;
+  --primary: #00D4FF;
+  --green:   #00FF88;
+  --amber:   #FFB300;
+  --red:     #FF3040;
+  --dim:     rgba(0,212,255,0.12);
+  --muted:   rgba(0,212,255,0.45);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--primary);
+  font-family: 'Courier New', Courier, monospace;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,0.07) 3px,
+    rgba(0,0,0,0.07) 4px
+  );
+}
+
+/* ─── BOOT OVERLAY ─────────────────────────────────────────── */
+#boot-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 8000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: opacity 0.6s ease;
+}
+#boot-overlay.fade-out { opacity: 0; pointer-events: none; }
+
+.boot-line {
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+  white-space: pre;
+  min-height: 1.4em;
+}
+.boot-line.done { color: var(--green); }
+
+/* ─── APP SHELL ─────────────────────────────────────────────── */
+#app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  position: relative;
+  z-index: 1;
+}
+#app.visible { opacity: 1; }
+
+/* Background circuit canvas */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ─── TOP BAR ───────────────────────────────────────────────── */
+#top-bar {
+  height: 50px;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: rgba(0,8,16,0.92);
+  border-bottom: 1px solid rgba(0,212,255,0.18);
+  position: relative;
+  z-index: 100;
+  cursor: default;
+}
+
+.top-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+#sys-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: blink-slow 1.2s ease-in-out infinite;
+}
+
+#sys-name {
+  font-size: 0.85rem;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--primary);
+  text-shadow: 0 0 8px rgba(0,212,255,0.6);
+}
+
+.top-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+#clock {
+  font-size: 1.5rem;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+  text-shadow: 0 0 10px rgba(0,212,255,0.7);
+  line-height: 1;
+}
+
+#date-str {
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.status-indicators {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-square {
+  width: 7px;
+  height: 7px;
+  background: var(--green);
+  box-shadow: 0 0 4px var(--green);
+}
+
+.sys-online {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: var(--green);
+  letter-spacing: 0.08em;
+  font-weight: bold;
+}
+
+.sys-online-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: blink-slow 2s ease-in-out infinite;
+}
+
+@keyframes blink-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ─── MAIN GRID ─────────────────────────────────────────────── */
+#main-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr minmax(180px, 260px);
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── METRIC COLUMNS ────────────────────────────────────────── */
+.metric-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 10px;
+  gap: 8px;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#left-col { align-items: stretch; }
+
+.metric-tile {
+  flex: 1;
+  min-height: 0;
+  background: rgba(0,212,255,0.03);
+  border: 1px solid rgba(0,212,255,0.18);
+  border-radius: 2px;
+  padding: 14px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Dot grid background */
+.metric-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(0,212,255,0.06) 1px, transparent 1px);
+  background-size: 18px 18px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Corner decorators via inner elements — ::before is now the dot grid */
+.metric-tile > * { position: relative; z-index: 1; }
+
+.tile-corner-tl,
+.tile-corner-br {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: rgba(0,212,255,0.5);
+  border-style: solid;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tile-corner-tl {
+  top: 5px;
+  left: 5px;
+  border-width: 1.5px 0 0 1.5px;
+}
+
+.tile-corner-br {
+  bottom: 5px;
+  right: 5px;
+  border-width: 0 1.5px 1.5px 0;
+}
+
+.tile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.tile-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tile-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.tile-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.tile-value {
+  font-size: 2.6rem;
+  font-weight: bold;
+  line-height: 1;
+  text-shadow: 0 0 12px currentColor;
+}
+
+@media (min-width:1600px) { .tile-value { font-size: 3rem; } }
+
+.tile-unit {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.tile-cursor {
+  display: inline-block;
+  animation: blink 1.1s infinite;
+  color: var(--muted);
+  font-size: 1.8rem;
+  line-height: 1;
+  vertical-align: bottom;
+}
+
+.tile-trend {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+/* ─── RED→GREEN GRADIENT BAR ────────────────────────────────── */
+.tile-grad-bar { margin: 5px 0 4px; flex-shrink: 0; }
+.tile-grad-track {
+  position: relative;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #FF3040 0%, #FFB300 45%, #00FF88 100%);
+  opacity: 0.75;
+}
+.tile-grad-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255,255,255,0.8);
+}
+
+/* ─── FIGURE ROWS ───────────────────────────────────────────── */
+.tile-fig-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 2px 0;
+  flex-shrink: 0;
+}
+.tile-fig-label {
+  font-size: 0.62rem;
+  color: rgba(0,212,255,0.4);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.tile-fig-val {
+  font-size: 0.82rem;
+  font-weight: bold;
+  color: rgba(0,212,255,0.75);
+  letter-spacing: 0.04em;
+}
+
+.tile-sparkline {
+  width: 100%;
+  height: 48px;
+  display: block;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+/* ─── CENTER COLUMN ─────────────────────────────────────────── */
+#center-col {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 6px;
+  gap: 6px;
+  min-height: 0;
+}
+
+#orb-canvas  { flex: 52; width:100%; min-height:0; display:block; }
+#eq-canvas   { flex: 8;  width:100%; min-height:0; display:block; }
+
+#center-bottom {
+  flex: 18;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  overflow: hidden;
+}
+
+#radar-canvas {
+  flex: 0 0 auto;
+  aspect-ratio: 1 / 1;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: block;
+  border: 1px solid rgba(0,212,255,0.12);
+  border-radius: 2px;
+}
+
+/* ─── LOG BARS — center column panels ───────────────────────── */
+#log-bar, #log-bar-b {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 2px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+}
+#log-bar   { background: rgba(0,0,0,0.55); border: 1px solid rgba(0,255,136,0.15); }
+#log-bar-b { background: rgba(0,0,0,0.55); border: 1px solid rgba(255,140,0,0.2); }
+
+#log-inner, #log-inner-b {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 1px;
+}
+
+.log-label   { font-size:0.58rem; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:3px; flex-shrink:0; color:rgba(0,255,136,0.3); }
+.log-label-b { color: rgba(255,140,0,0.4); }
+
+.log-entry {
+  font-size: 0.7rem;
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-all;
+  opacity: 0;
+  animation: logFadeIn 0.12s forwards;
+  padding: 0;
+  margin: 0;
+}
+
+@keyframes logFadeIn { to { opacity: 1; } }
+
+/* ─── ADMIN MODAL ───────────────────────────────────────────── */
+#admin-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 7000;
+  align-items: center;
+  justify-content: center;
+}
+#admin-modal.open { display: flex; }
+
+#admin-box {
+  background: #000d1a;
+  border: 1px solid rgba(0,212,255,0.3);
+  border-radius: 4px;
+  padding: 28px 32px;
+  width: 540px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+#admin-box h2 {
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(0,212,255,0.15);
+  padding-bottom: 12px;
+}
+
+.admin-field {
+  margin-bottom: 14px;
+}
+
+.admin-field label {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.admin-field input,
+.admin-field select {
+  width: 100%;
+  background: rgba(0,212,255,0.04);
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: 2px;
+  color: var(--primary);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.78rem;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.admin-field input:focus,
+.admin-field select:focus {
+  border-color: rgba(0,212,255,0.5);
+}
+
+.admin-field select option {
+  background: #000d1a;
+}
+
+.admin-metric-row {
+  border: 1px solid rgba(0,212,255,0.1);
+  border-radius: 2px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: rgba(0,212,255,0.02);
+}
+
+.admin-metric-row h3 {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.admin-metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.admin-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 20px;
+  border-radius: 2px;
+  cursor: pointer;
+  border: 1px solid;
+  transition: background 0.2s, color 0.2s;
+}
+
+.btn-primary {
+  background: rgba(0,212,255,0.12);
+  border-color: rgba(0,212,255,0.4);
+  color: var(--primary);
+}
+.btn-primary:hover {
+  background: rgba(0,212,255,0.22);
+}
+
+.btn-cancel {
+  background: transparent;
+  border-color: rgba(0,212,255,0.18);
+  color: var(--muted);
+}
+.btn-cancel:hover {
+  background: rgba(0,212,255,0.05);
+}
+
+/* ─── WIDE SCREEN ───────────────────────────────────────────── */
+@media (min-width: 1600px) {
+  .tile-sparkline { height: 64px; }
+}
+
+/* ─── RESPONSIVE ────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  #main-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  #left-col, #right-col {
+    display: none;
+  }
+
+  #metrics-mobile {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  #metrics-mobile .metric-tile {
+    flex: none;
+  }
+}
+
+#metrics-mobile {
+  display: none;
+}
+</style>
+</head>
+<body>
+
+<!-- Boot overlay -->
+<div id="boot-overlay">
+  <div class="boot-line" id="bl0"></div>
+  <div class="boot-line" id="bl1"></div>
+  <div class="boot-line" id="bl2"></div>
+  <div class="boot-line" id="bl3"></div>
+  <div class="boot-line" id="bl4"></div>
+</div>
+
+<!-- Admin modal -->
+<div id="admin-modal">
+  <div id="admin-box">
+    <h2>// SYSTEM CONFIGURATION</h2>
+    <div class="admin-field">
+      <label>System Name</label>
+      <input type="text" id="admin-sysname" maxlength="30">
+    </div>
+    <div id="admin-metrics-container"></div>
+    <div class="admin-buttons">
+      <button class="btn btn-primary" id="admin-save">SAVE CONFIG</button>
+      <button class="btn btn-cancel" id="admin-cancel">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- Background canvas -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- App shell -->
+<div id="app">
+
+  <!-- Top bar -->
+  <div id="top-bar">
+    <div class="top-left">
+      <div id="sys-dot"></div>
+      <div id="sys-name">MEREBASE.OS</div>
+    </div>
+    <div class="top-center">
+      <div id="clock">00:00:00</div>
+      <div id="date-str">---</div>
+    </div>
+    <div class="top-right">
+      <div class="status-indicators">
+        <div class="status-indicator">
+          <div class="status-square"></div>
+          <span>API</span>
+        </div>
+        <div class="status-indicator">
+          <div class="status-square"></div>
+          <span>DB</span>
+        </div>
+        <div class="status-indicator">
+          <div class="status-square"></div>
+          <span>NET</span>
+        </div>
+      </div>
+      <div class="sys-online">
+        SYS: ONLINE
+        <div class="sys-online-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile metrics (hidden on desktop) -->
+  <div id="metrics-mobile"></div>
+
+  <!-- Main grid -->
+  <div id="main-grid">
+
+    <!-- Left column -->
+    <div class="metric-col" id="left-col"></div>
+
+    <!-- Center column -->
+    <div id="center-col">
+      <canvas id="orb-canvas"></canvas>
+      <canvas id="eq-canvas"></canvas>
+      <div id="center-bottom">
+        <canvas id="radar-canvas"></canvas>
+        <div id="log-bar">
+          <div class="log-label">SYSTEM LOG</div>
+          <div id="log-inner"></div>
+        </div>
+        <div id="log-bar-b">
+          <div class="log-label log-label-b">NETWORK EVENTS</div>
+          <div id="log-inner-b"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div class="metric-col" id="right-col"></div>
+
+  </div><!-- end #main-grid -->
+
+</div><!-- end #app -->
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   KV STORAGE + DATA MODEL
+═══════════════════════════════════════════════════════════════ */
+
+const MOCK_HUD = {
+  system: "MEREBASE.OS",
+  metrics: [
+    { id:"m1",  label:"ACTIVE USERS",   value:"1,247", unit:"",      trend:"+12%",  status:"normal"  },
+    { id:"m2",  label:"API REQUESTS",   value:"48.2K", unit:"/hr",   trend:"+5%",   status:"normal"  },
+    { id:"m3",  label:"STORAGE USED",   value:"2.4",   unit:"GB",    trend:"+0.1",  status:"warning" },
+    { id:"m4",  label:"CACHE HIT",      value:"94.2",  unit:"%",     trend:"+1.1",  status:"good"    },
+    { id:"m5",  label:"QUEUE DEPTH",    value:"18",    unit:"tasks", trend:"-4",    status:"normal"  },
+    { id:"m6",  label:"BANDWIDTH",      value:"1.8",   unit:"GB/s",  trend:"+0.2",  status:"normal"  },
+    { id:"m7",  label:"RESPONSE TIME",  value:"142",   unit:"ms",    trend:"-8ms",  status:"good"    },
+    { id:"m8",  label:"CPU LOAD",       value:"34.7",  unit:"%",     trend:"+2.1",  status:"normal"  },
+    { id:"m9",  label:"ERROR RATE",     value:"0.02",  unit:"%",     trend:"-0.01", status:"good"    },
+    { id:"m10", label:"CONNECTIONS",    value:"847",   unit:"",      trend:"+23",   status:"normal"  },
+    { id:"m11", label:"APPS ONLINE",    value:"19",    unit:"/ 23",  trend:"+2",    status:"normal"  },
+    { id:"m12", label:"UPTIME",         value:"99.97", unit:"%",     trend:"+0.01", status:"good"    }
+  ],
+  alerts: []
+};
+
+const DB = window.MB ? {
+  async load() {
+    const r = await fetch(`${MB.api}/data?app_id=${MB.app_id}&key=hud`, {credentials:'include'});
+    const {value} = await r.json();
+    return value || null;
+  },
+  async save(data) {
+    await fetch(`${MB.api}/data`, {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({app_id:MB.app_id, key:'hud', value:data})
+    });
+  }
+} : {
+  async load() { return JSON.parse(JSON.stringify(MOCK_HUD)); },
+  async save(d) { Object.assign(MOCK_HUD, d); }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   STATUS COLOURS
+═══════════════════════════════════════════════════════════════ */
+const STATUS_COLOR = {
+  normal:   '#00D4FF',
+  good:     '#00FF88',
+  warning:  '#FFB300',
+  critical: '#FF3040'
+};
+
+function statusColor(s) { return STATUS_COLOR[s] || STATUS_COLOR.normal; }
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOT SEQUENCE
+═══════════════════════════════════════════════════════════════ */
+async function runBoot(systemName) {
+  const lines = [
+    `${systemName} v2.1`,
+    'INITIALISING CORE MODULES... OK',
+    'LOADING DATA LAYER.......... OK',
+    'ESTABLISHING CONNECTIONS.... OK',
+    'RENDERING INTERFACE......... OK'
+  ];
+
+  async function typewriter(el, text, delay) {
+    for (let i = 0; i <= text.length; i++) {
+      el.textContent = text.slice(0, i) + (i < text.length ? '_' : '');
+      await sleep(delay);
+    }
+    el.textContent = text;
+    el.classList.add('done');
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  for (let i = 0; i < lines.length; i++) {
+    const el = document.getElementById('bl' + i);
+    await typewriter(el, lines[i], 25);
+    if (i < lines.length - 1) await sleep(250);
+  }
+
+  await sleep(400);
+  const overlay = document.getElementById('boot-overlay');
+  overlay.classList.add('fade-out');
+  setTimeout(() => { overlay.style.display = 'none'; }, 700);
+
+  const app = document.getElementById('app');
+  app.classList.add('visible');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CLOCK
+═══════════════════════════════════════════════════════════════ */
+function startClock() {
+  const clockEl = document.getElementById('clock');
+  const dateEl  = document.getElementById('date-str');
+  const days    = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const months  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+  function tick() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const ss = String(now.getSeconds()).padStart(2,'0');
+    clockEl.textContent = `${hh}:${mm}:${ss}`;
+    const dd  = String(now.getDate()).padStart(2,'0');
+    const mon = months[now.getMonth()];
+    const yr  = now.getFullYear();
+    const dow = days[now.getDay()];
+    dateEl.textContent = `${dow} ${dd} ${mon} ${yyyy(yr)}`;
+  }
+
+  function yyyy(y) { return String(y); }
+
+  tick();
+  setInterval(tick, 1000);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SPARKLINE DATA
+═══════════════════════════════════════════════════════════════ */
+const sparkData = {}; // metricId -> Float32Array(24)
+
+function initSparkData(metrics) {
+  metrics.forEach(m => {
+    const base = parseFloat(m.value.replace(/,/g,'')) || 1;
+    const arr = new Float32Array(24);
+    let v = base;
+    for (let i = 0; i < 24; i++) {
+      v += (Math.random() - 0.5) * base * 0.08;
+      arr[i] = Math.max(0, v);
+    }
+    sparkData[m.id] = arr;
+  });
+}
+
+function updateSparkData(metrics) {
+  metrics.forEach(m => {
+    const arr = sparkData[m.id];
+    if (!arr) return;
+    const base = parseFloat(m.value.replace(/,/g,'')) || 1;
+    const last = arr[23];
+    const next = Math.max(0, last + (Math.random() - 0.5) * base * 0.1);
+    arr.copyWithin(0, 1);
+    arr[23] = next;
+    drawSparkline(m.id, m.status);
+  });
+}
+
+function drawSparkline(id, status) {
+  const canvas = document.getElementById('spark-' + id);
+  if (!canvas) return;
+  const arr = sparkData[id];
+  if (!arr) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const min = Math.min(...arr);
+  const max = Math.max(...arr);
+  const range = max - min || 1;
+
+  const color = statusColor(status);
+
+  ctx.beginPath();
+  for (let i = 0; i < arr.length; i++) {
+    const x = (i / (arr.length - 1)) * W;
+    const y = H - 2 - ((arr[i] - min) / range) * (H - 4);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Fill
+  const fillPath = new Path2D();
+  for (let i = 0; i < arr.length; i++) {
+    const x = (i / (arr.length - 1)) * W;
+    const y = H - 2 - ((arr[i] - min) / range) * (H - 4);
+    i === 0 ? fillPath.moveTo(x, y) : fillPath.lineTo(x, y);
+  }
+  fillPath.lineTo(W, H);
+  fillPath.lineTo(0, H);
+  fillPath.closePath();
+
+  const [r, g, b] = hexToRgb(color);
+  ctx.fillStyle = `rgba(${r},${g},${b},0.12)`;
+  ctx.fill(fillPath);
+}
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   METRIC TILE RENDERING
+═══════════════════════════════════════════════════════════════ */
+function renderMetricTile(metric, tileIndex) {
+  const color = statusColor(metric.status);
+  const trendPositive = !metric.trend.startsWith('-');
+  const trendColor = trendPositive ? '#00FF88' : '#FFB300';
+  const utilPct = Math.floor(20 + Math.random() * 70);
+
+  const secondaries = [
+    { label2:'24H AVG',  val2:'1,102',   label3:'PEAK TODAY', val3:'2,341',   col3:'#FFB300' },
+    { label2:'24H AVG',  val2:'41.8K',   label3:'PEAK TODAY', val3:'91.2K',   col3:'#FFB300' },
+    { label2:'USED',     val2:'2.4 GB',  label3:'FREE',       val3:'7.6 GB',  col3:'#00FF88' },
+    { label2:'1H AVG',   val2:'92.8%',   label3:'LOWEST',     val3:'88.1%',   col3:'#FF3040' },
+    { label2:'PENDING',  val2:'12',      label3:'COMPLETED',  val3:'2,841',   col3:'#00FF88' },
+    { label2:'IN',       val2:'940MB/s', label3:'OUT',        val3:'860MB/s', col3:'#00D4FF' },
+    { label2:'24H AVG',  val2:'138ms',   label3:'PEAK TODAY', val3:'620ms',   col3:'#FF3040' },
+    { label2:'1H AVG',   val2:'31.2%',   label3:'PEAK TODAY', val3:'78.4%',   col3:'#FFB300' },
+    { label2:'24H AVG',  val2:'0.01%',   label3:'PEAK TODAY', val3:'0.08%',   col3:'#FFB300' },
+    { label2:'AUTH\'D',  val2:'812',     label3:'ANON',       val3:'35',      col3:'#FFB300' },
+    { label2:'WAITING',  val2:'3',       label3:'OFFLINE',    val3:'1',       col3:'#FF3040' },
+    { label2:'7D AVG',   val2:'99.94%',  label3:'INCIDENTS',  val3:'0',       col3:'#00FF88' },
+  ];
+  const sec = secondaries[tileIndex] || secondaries[0];
+
+  const tileStyles = [
+    { accent:'#00D4FF', sparkH:44, reverse:false, bg:'rgba(0,212,255,0.03)'   },  // 0 cyan standard
+    { accent:'#00FF88', sparkH:60, reverse:false, bg:'rgba(0,255,136,0.03)'   },  // 1 green big spark
+    { accent:'#FFB300', sparkH:36, reverse:true,  bg:'rgba(255,179,0,0.03)'   },  // 2 amber reversed
+    { accent:'#00FF88', sparkH:44, reverse:false, bg:'rgba(0,255,136,0.03)'   },  // 3 green
+    { accent:'#00D4FF', sparkH:52, reverse:true,  bg:'rgba(0,212,255,0.03)'   },  // 4 cyan big spark
+    { accent:'#FFB300', sparkH:40, reverse:false, bg:'rgba(255,179,0,0.03)'   },  // 5 amber
+    { accent:'#00FF88', sparkH:44, reverse:true,  bg:'rgba(0,255,136,0.03)'   },  // 6 green reversed
+    { accent:'#FF6B6B', sparkH:52, reverse:true,  bg:'rgba(255,107,107,0.03)' },  // 7 red (CPU)
+    { accent:'#00FF88', sparkH:36, reverse:true,  bg:'rgba(0,255,136,0.03)'   },  // 8 green reversed (error=low good)
+    { accent:'#00D4FF', sparkH:48, reverse:false, bg:'rgba(0,212,255,0.03)'   },  // 9 cyan
+    { accent:'#00FF88', sparkH:44, reverse:false, bg:'rgba(0,255,136,0.03)'   },  // 10 green
+    { accent:'#00FF88', sparkH:44, reverse:false, bg:'rgba(0,255,136,0.03)'   },  // 11 green (uptime)
+  ];
+  const style = tileStyles[tileIndex] || tileStyles[0];
+
+  // Determine border colour from accent
+  const borderColorMap = {
+    '#00FF88': 'rgba(0,255,136,0.2)',
+    '#FFB300': 'rgba(255,179,0,0.2)',
+    '#FF6B6B': 'rgba(255,107,107,0.2)',
+  };
+  const borderColor = borderColorMap[style.accent] || 'rgba(0,212,255,0.18)';
+
+  // Gradient track direction
+  const gradTrackStyle = style.reverse ? 'transform:scaleX(-1)' : '';
+
+  const tile = document.createElement('div');
+  tile.className = 'metric-tile';
+  tile.id = 'tile-' + metric.id;
+  tile.style.background = style.bg;
+  tile.style.borderColor = borderColor;
+
+  tile.innerHTML = `
+    <div class="tile-corner-tl"></div>
+    <div class="tile-corner-br"></div>
+    <div class="tile-header">
+      <span class="tile-label">${metric.label}</span>
+      <span class="tile-status-dot" style="background:${color};box-shadow:0 0 5px ${color}"></span>
+    </div>
+    <div class="tile-value-row">
+      <span class="tile-value" style="color:${style.accent}" id="val-${metric.id}">${metric.value}</span>
+      <span class="tile-unit">${metric.unit}</span>
+      <span class="tile-cursor" style="color:${style.accent}">_</span>
+    </div>
+    <div class="tile-trend" style="background:${trendColor}22;color:${trendColor};border:1px solid ${trendColor}44">${metric.trend}</div>
+    <div class="tile-grad-bar">
+      <div class="tile-grad-track" style="${gradTrackStyle}">
+        <div class="tile-grad-marker" style="left:${utilPct}%"></div>
+      </div>
+    </div>
+    <div class="tile-fig-row">
+      <span class="tile-fig-label">${sec.label2}</span>
+      <span class="tile-fig-val" style="color:${style.accent}">${sec.val2}</span>
+    </div>
+    <div class="tile-fig-row">
+      <span class="tile-fig-label">${sec.label3}</span>
+      <span class="tile-fig-val" style="color:${sec.col3}">${sec.val3}</span>
+    </div>
+    <canvas class="tile-sparkline" id="spark-${metric.id}" style="height:${style.sparkH}px"></canvas>
+  `;
+
+  return tile;
+}
+
+function buildMetricColumns(metrics) {
+  const left  = document.getElementById('left-col');
+  const right = document.getElementById('right-col');
+  const mob   = document.getElementById('metrics-mobile');
+
+  left.innerHTML = '';
+  right.innerHTML = '';
+  mob.innerHTML = '';
+
+  const split = Math.ceil(metrics.length / 2);
+  metrics.forEach((m, i) => {
+    if (i < split) {
+      left.appendChild(renderMetricTile(m, i));
+    } else {
+      right.appendChild(renderMetricTile(m, i));
+    }
+    const mobTile = renderMetricTile(m, i);
+    mob.appendChild(mobTile);
+  });
+
+  // Size sparkline canvases after DOM insertion
+  requestAnimationFrame(() => {
+    metrics.forEach(m => {
+      const allSparks = document.querySelectorAll('#spark-' + m.id);
+      allSparks.forEach(c => {
+        c.width  = c.offsetWidth;
+        c.height = parseInt(c.style.height) || c.offsetHeight || 48;
+        drawSparkline(m.id, m.status);
+      });
+    });
+
+    // Size radar canvas (now in #center-bottom, laid out by this point)
+    const radarCanvas = document.getElementById('radar-canvas');
+    if (radarCanvas) {
+      radarCanvas.width  = radarCanvas.offsetWidth;
+      radarCanvas.height = radarCanvas.offsetHeight;
+
+      // Re-init radar blips now that canvas is sized
+      initRadar();
+
+      // Observe future resizes
+      if (window._radarRO) window._radarRO.disconnect();
+      window._radarRO = new ResizeObserver(() => {
+        const rc = document.getElementById('radar-canvas');
+        if (rc) {
+          rc.width  = rc.offsetWidth;
+          rc.height = rc.offsetHeight;
+        }
+      });
+      window._radarRO.observe(radarCanvas);
+    }
+  });
+}
+
+function updateTileDisplay(metric) {
+  const color = statusColor(metric.status);
+  const tile = document.getElementById('tile-' + metric.id);
+  if (!tile) return;
+
+  const valEl = tile.querySelector('.tile-value');
+  if (valEl) { valEl.textContent = metric.value; valEl.style.color = color; }
+
+  const dot = tile.querySelector('.tile-status-dot');
+  if (dot) { dot.style.background = color; dot.style.boxShadow = `0 0 5px ${color}`; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HACKER LOG — BURST SCHEDULER
+═══════════════════════════════════════════════════════════════ */
+const LOG_POOL = [
+  '0xFFE4B820 → KERNEL READ 4096b @ stack:0x7fff5e290000 [pid:4721 tid:4721]',
+  'ESTABLISHED 192.168.1.1:443 ↔ 10.0.0.47:52134 TLSv1.3 AES256-GCM-SHA384 [seq:8821944]',
+  '/proc/4721/maps: heap 0x55a3b2c41000-0x55a3b4c41000 rw-p 00000000 00:00 0',
+  'syscall[4721]: mmap(NULL,65536,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANON,−1,0) = 0x7f8a2c000000',
+  'db: SELECT e.id,e.type,e.name,e.data FROM mb_entities WHERE app_id=\'a3f8b2c1\' AND type=\'record\' ORDER BY created_at DESC LIMIT 100 [38ms 1247rows]',
+  'audit(1685432891.442:142): apparmor=ALLOWED op=file_mmap name="/lib/x86_64-linux-gnu/libc-2.31.so" pid=4721',
+  'JWT decode: {sub:user_42,iat:1685432800,exp:1685436400,scope:[deploy:write,read:all]} → SIG_OK',
+  'SHA-256: a3f4b2c1d9e8f7a6 b5c4d3e2f1a0b9c8 d7e6f5a4b3c2d1e0 f9a8b7c6d5e4f3a2 ← /run/mb/session.key',
+  'fork() → pid:4724 execve("/usr/bin/node",["/usr/bin/node","--max-old-space-size=512","worker.js"],envp[42])',
+  'netstat: tcp 0 0 127.0.0.1:3306 127.0.0.1:49812 ESTABLISHED 4721/node',
+  'inotify: IN_MODIFY /var/www/html/wp-content/uploads/merebase/apps/pitch-deck/v3/index.html [Δ4224b]',
+  'crypto.randomBytes(32) → 7f3a9bd2e84c1f56a0b29e3d74c8f1a2b3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8 [entropy:OK]',
+  'POST /mb/api/entities HTTP/1.1 → 200 OK 23ms | body:1247b | X-Request-Id:req_8f3a2b1c',
+  'pipeline.stage[3]: transform(records[1247]) → output[1201] filtered:46 elapsed:18ms mem:+2.1MB',
+  'worker_pool: task dispatched pid:4724 fn:syncEntities args:{app_id:"a3f8",type:"record"} queue_depth:3',
+  'TLS handshake: ClientHello → ServerHello [ECDHE-RSA-AES256-GCM-SHA384] cert:CN=merebase.com/O=Merebase',
+  'heap[4721]: alloc 0x55a3b2c41a80 size=4096 align=16 class=large → ok total_allocated:48.2MB',
+  'rate_limiter: key=user_42 window=60s count=94/120 remaining:26 reset_at=1685436400',
+  'cache: MISS key=entity_index_a3f8b2c1 → fetch from db [12ms] → stored ttl=300s',
+  'route: GET /mb/app/hud-dashboard/ → app_id=a3f8b2c1 status=online perm=private user=42 [4ms]',
+  'fs: wp_filesystem->get_contents("/uploads/merebase/apps/hud-dashboard/.meta.json") → 284b [ok]',
+  'cron: mb_hourly fired 1685432800 → jobs:[rotate_logs,flush_cache,check_expirations] queued:3',
+  'PACKET: 10.0.0.1 → 10.0.0.47 TCP 443 [SYN,ACK] seq=0 ack=1 win=65535 len=0 mss=1460 sackOK',
+  'zip: extracting pitch-deck.zip → /uploads/merebase/apps/pitch-deck/ [14 files 47.2KB] → sanitise:ok',
+  'auth: magic_link token=7f3a...d8b2 user=user@example.com ttl=900s created → queued for send',
+  'db: INSERT INTO mb_audit_log (user_id,action,app_id,meta,created_at) VALUES (42,"deploy","a3f8",\'{"v":3}\',NOW())',
+  'signal: SIGUSR1 → pid:4721 → logrotate triggered → /var/log/merebase/app.log [48MB → compressed:8.1MB]',
+  'watcher: file_change detected path=/apps/wiki/index.html hash=SHA256:b4d2...f9a1 prev=SHA256:c3e1...a7d0',
+  'scheduler: next_run=1685436400 jobs=4 overdue=0 last_duration=142ms status=OK',
+  '0x00007f8a2c000000: PROT_READ|PROT_WRITE MAP_PRIVATE MAP_ANONYMOUS fd=-1 offset=0 [64KB]',
+  'session: token_hash=bcrypt(rounds=12) user_id=42 ip=192.168.1.1 ua="Mozilla/5.0" created expires+3600',
+  'entity: UPSERT app_id=a3f8 type=wiki_page id=uuid4() name="Home" data={body:2841b} ts=1685432891',
+  'backup: snapshot /uploads/merebase/ → /backups/mb_20250531_100843.tar.gz [142MB → 38MB] ok',
+  'dns: resolve merebase.com → [A:104.21.x.x, A:172.67.x.x] AAAA:[2606:4700::...] ttl=300',
+  'mbRouter: rewrite_rules registered [18 patterns] flush_rewrite=false permalink_structure=/%postname%/',
+  'WARN: response_time=620ms threshold=500ms route=POST:/mb/api/entities app_id=a3f8 [slow query logged]',
+  'openssl: cert CN=merebase.com valid 2025-01-01→2026-01-01 issuer=R3 fingerprint=A3:F4:B2:C1:...',
+  'kv: SET app_id=a3f8 key=deck value=14281b compressed=3847b ratio=0.27 ttl=none → ok',
+  'process: getrusage pid=4721 utime=0.342s stime=0.089s maxrss=148MB minflt=9821 majflt=2',
+];
+
+function logColour(text) {
+  if (text.startsWith('WARN') || text.includes('[slow')) return 'rgba(255,179,0,0.85)';
+  if (text.startsWith('0x') || text.startsWith('PACKET') || text.startsWith('TLS')) return 'rgba(0,212,255,0.7)';
+  if (text.startsWith('db:') || text.startsWith('entity:') || text.startsWith('kv:')) return 'rgba(0,255,200,0.75)';
+  return 'rgba(0,255,136,0.8)';
+}
+
+let logLastIdx = -1;
+
+function addHackerLogEntry() {
+  const col = document.getElementById('log-inner');
+  if (!col) return;
+  let idx;
+  do { idx = Math.floor(Math.random() * LOG_POOL.length); } while (idx === logLastIdx);
+  logLastIdx = idx;
+  const text = LOG_POOL[idx];
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  el.style.color = logColour(text);
+  el.textContent = text;
+  col.appendChild(el);
+  // keep max 20
+  while (col.children.length > 20) col.removeChild(col.firstChild);
+}
+
+function scheduleBurst() {
+  const r = Math.random();
+  const count = r < 0.45 ? 1 : r < 0.70 ? 2 : r < 0.85 ? 3 : r < 0.94 ? 4 : 5;
+  for (let i = 0; i < count; i++) {
+    setTimeout(addHackerLogEntry, i * (40 + Math.random() * 80));
+  }
+  const nextDelay = 300 + Math.random() * 1900;
+  setTimeout(scheduleBurst, nextDelay + count * 80);
+}
+
+/* ─── AMBER LOG (network events) ─────────────────────────────── */
+const NET_POOL = [
+  'CONNECT  10.0.0.47:52134 → 104.21.8.93:443 TLSv1.3',
+  'CLOSE    10.0.0.47:51882 ← 172.67.14.2:443 [FIN,ACK]',
+  'DNS      merebase.com → A:104.21.8.93 ttl=300',
+  'BLOCKED  185.220.101.x:4444 → 10.0.0.47 [firewall rule #18]',
+  'ACCEPT   192.168.1.1:49821 → 10.0.0.47:443 [new session]',
+  'TIMEOUT  10.0.0.47:50012 → 8.8.8.8:53 [UDP 2000ms]',
+  'RETX     seq=8821944 → 10.0.0.2:443 attempt=2 [congestion]',
+  'TLS      ClientHello ECDHE-RSA-AES256-GCM-SHA384 ← 192.168.1.55',
+  'PROBE    10.0.0.47 → 192.168.1.0/24 [ping sweep detected]',
+  'LATENCY  10.0.0.47 → 104.21.8.93 rtt=18ms jitter=2ms',
+  'PACKET   ICMP echo 10.0.0.1 → 10.0.0.47 ttl=64 id=0x3f2a',
+  'ROUTE    10.0.0.0/24 via 192.168.1.1 dev eth0 metric=100',
+  'ARP      who-has 10.0.0.1? tell 10.0.0.47 [broadcast]',
+  'DHCP     OFFER 10.0.0.47/24 gw=10.0.0.1 dns=8.8.8.8 lease=86400s',
+  'RESET    10.0.0.47:52200 ← 203.0.113.1:80 [RST,ACK]',
+  'STREAM   POST /mb/api/entities 847b → 200 OK 23ms keep-alive',
+  'THROTTLE 10.0.0.47 outbound 94% of 1Gbps threshold [burst]',
+  'SCAN     port 22 → 10.0.0.47 [rejected — not in allowlist]',
+  'FORWARD  10.0.0.47:8080 → 127.0.0.1:3000 [nginx proxy]',
+  'CERT     CN=merebase.com exp=2026-01-01 issuer=R3 [valid]',
+];
+let netLastIdx = -1;
+function addNetLogEntry() {
+  const col = document.getElementById('log-inner-b');
+  if (!col) return;
+  let idx;
+  do { idx = Math.floor(Math.random() * NET_POOL.length); } while (idx === netLastIdx);
+  netLastIdx = idx;
+  const el = document.createElement('div');
+  el.className = 'log-entry';
+  el.style.color = 'rgba(255,140,0,0.82)';
+  el.textContent = NET_POOL[idx];
+  col.appendChild(el);
+  while (col.children.length > 20) col.removeChild(col.firstChild);
+}
+function scheduleBurstB() {
+  const r = Math.random();
+  const count = r < 0.50 ? 1 : r < 0.75 ? 2 : r < 0.90 ? 3 : 4;
+  for (let i = 0; i < count; i++) {
+    setTimeout(addNetLogEntry, i * (60 + Math.random() * 100));
+  }
+  const nextDelay = 500 + Math.random() * 2500;
+  setTimeout(scheduleBurstB, nextDelay + count * 100);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCREEN FLICKER
+═══════════════════════════════════════════════════════════════ */
+function scheduleFlicker() {
+  const delay = 10000 + Math.random() * 8000;
+  setTimeout(() => {
+    document.body.style.opacity = '0.93';
+    setTimeout(() => {
+      document.body.style.opacity = '1';
+      scheduleFlicker();
+    }, 60);
+  }, delay);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BACKGROUND CIRCUIT TRACES
+═══════════════════════════════════════════════════════════════ */
+const bgCanvas = document.getElementById('bg-canvas');
+const bgCtx    = bgCanvas.getContext('2d');
+
+function resizeBgCanvas() {
+  bgCanvas.width  = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+}
+
+// Generate PCB-style L/Z shaped paths as % coords
+function makePcbPaths() {
+  const paths = [];
+  const templates = [
+    [{x:5,y:20},{x:25,y:20},{x:25,y:50},{x:55,y:50},{x:55,y:80}],
+    [{x:95,y:10},{x:75,y:10},{x:75,y:35},{x:40,y:35},{x:40,y:65}],
+    [{x:10,y:90},{x:30,y:90},{x:30,y:60},{x:60,y:60},{x:60,y:30},{x:80,y:30}],
+    [{x:90,y:80},{x:65,y:80},{x:65,y:55},{x:35,y:55},{x:35,y:25},{x:15,y:25}],
+    [{x:50,y:5},{x:50,y:25},{x:20,y:25},{x:20,y:70},{x:45,y:70}],
+    [{x:2,y:45},{x:18,y:45},{x:18,y:75},{x:48,y:75},{x:48,y:92}],
+    [{x:98,y:55},{x:82,y:55},{x:82,y:20},{x:55,y:20},{x:55,y:5}],
+    [{x:70,y:95},{x:70,y:72},{x:90,y:72},{x:90,y:42},{x:72,y:42}],
+    [{x:3,y:65},{x:22,y:65},{x:22,y:88},{x:60,y:88},{x:60,y:68}],
+    [{x:88,y:95},{x:88,y:68},{x:62,y:68},{x:62,y:45},{x:42,y:45},{x:42,y:10}]
+  ];
+
+  templates.forEach((pts, i) => {
+    const speed = 8000 + Math.random() * 12000;
+    paths.push({
+      pts,
+      speed,
+      t: Math.random(), // 0..1 progress
+      paused: false,
+      pauseUntil: 0,
+      trailLen: 0.15
+    });
+  });
+  return paths;
+}
+
+const pcbPaths = makePcbPaths();
+
+function getPathPoint(pts, t, W, H) {
+  // Total length
+  let segs = [];
+  let totalLen = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = (pts[i].x - pts[i-1].x) / 100 * W;
+    const dy = (pts[i].y - pts[i-1].y) / 100 * H;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    segs.push(len);
+    totalLen += len;
+  }
+
+  const target = t * totalLen;
+  let acc = 0;
+  for (let i = 0; i < segs.length; i++) {
+    if (acc + segs[i] >= target || i === segs.length - 1) {
+      const frac = segs[i] > 0 ? (target - acc) / segs[i] : 0;
+      const x1 = pts[i].x / 100 * W;
+      const y1 = pts[i].y / 100 * H;
+      const x2 = pts[i+1].x / 100 * W;
+      const y2 = pts[i+1].y / 100 * H;
+      return { x: x1 + (x2 - x1) * frac, y: y1 + (y2 - y1) * frac };
+    }
+    acc += segs[i];
+  }
+  const last = pts[pts.length-1];
+  return { x: last.x / 100 * W, y: last.y / 100 * H };
+}
+
+function drawBgCanvas(dt) {
+  const W = bgCanvas.width, H = bgCanvas.height;
+  bgCtx.clearRect(0, 0, W, H);
+
+  const now = performance.now();
+
+  pcbPaths.forEach(p => {
+    const pts = p.pts;
+
+    // Draw full path
+    bgCtx.beginPath();
+    pts.forEach((pt, i) => {
+      const x = pt.x / 100 * W;
+      const y = pt.y / 100 * H;
+      i === 0 ? bgCtx.moveTo(x, y) : bgCtx.lineTo(x, y);
+    });
+    bgCtx.strokeStyle = 'rgba(0,212,255,0.05)';
+    bgCtx.lineWidth = 1;
+    bgCtx.stroke();
+
+    // Advance dot
+    if (!p.paused) {
+      p.t += dt / p.speed;
+      if (p.t >= 1) {
+        p.t = 0;
+        p.paused = true;
+        p.pauseUntil = now + 300 + Math.random() * 400;
+      }
+    } else if (now >= p.pauseUntil) {
+      p.paused = false;
+    }
+
+    if (p.paused) return;
+
+    // Draw trail
+    const trailStart = Math.max(0, p.t - p.trailLen);
+    const steps = 20;
+    for (let s = 0; s < steps; s++) {
+      const ta = trailStart + (p.t - trailStart) * (s / steps);
+      const tb = trailStart + (p.t - trailStart) * ((s + 1) / steps);
+      const pa = getPathPoint(pts, ta, W, H);
+      const pb = getPathPoint(pts, tb, W, H);
+      const alpha = 0.05 + 0.30 * (s / steps);
+      bgCtx.beginPath();
+      bgCtx.moveTo(pa.x, pa.y);
+      bgCtx.lineTo(pb.x, pb.y);
+      bgCtx.strokeStyle = `rgba(0,212,255,${alpha.toFixed(2)})`;
+      bgCtx.lineWidth = 1.5;
+      bgCtx.stroke();
+    }
+
+    // Draw dot
+    const dotPos = getPathPoint(pts, p.t, W, H);
+    bgCtx.save();
+    bgCtx.shadowBlur = 10;
+    bgCtx.shadowColor = '#00D4FF';
+    bgCtx.beginPath();
+    bgCtx.arc(dotPos.x, dotPos.y, 2.5, 0, Math.PI * 2);
+    bgCtx.fillStyle = 'rgba(255,255,255,0.95)';
+    bgCtx.fill();
+    bgCtx.restore();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ORB CANVAS
+═══════════════════════════════════════════════════════════════ */
+const orbCanvas = document.getElementById('orb-canvas');
+const orbCtx    = orbCanvas.getContext('2d');
+
+// Pulse rings — now driven by amplitude
+let pulseRings = []; // { born: t } — each ring tracks its own start time
+
+function initPulseRings() {
+  pulseRings = [];
+}
+
+// Speech-like amplitude system
+let orbSpikes = [];   // active speech spikes: [{born: t, dur: float, amp: float}]
+let orbNextSpike = 0; // t value when next spike fires
+let orbLastRingT = 0; // last time a normal ring was emitted
+
+function drawOrb(t) {
+  // ── Spike / amplitude update ──────────────────────────────
+  if (t > orbNextSpike) {
+    orbSpikes.push({ born: t, dur: 0.25 + Math.random() * 0.6, amp: 0.4 + Math.random() * 0.6 });
+    orbNextSpike = t + 0.3 + Math.random() * 1.4;
+  }
+  orbSpikes = orbSpikes.filter(s => (t - s.born) < s.dur);
+
+  const baseBreath = 0.18 + 0.12 * Math.sin(t * 0.7);
+  const spikeAmp = orbSpikes.reduce((acc, s) => {
+    const progress = (t - s.born) / s.dur;
+    const envelope = Math.sin(progress * Math.PI);
+    return acc + s.amp * envelope;
+  }, 0);
+  const orbAmp = Math.min(1, baseBreath + spikeAmp);
+
+  // ── Ring emission ─────────────────────────────────────────
+  const ringPeriod = orbAmp > 0.6 ? 1.25 : 2.5; // double rate at high amp
+  if (t - orbLastRingT >= ringPeriod) {
+    pulseRings.push({ born: t });
+    orbLastRingT = t;
+  }
+  // Extra immediate ring when a spike activates
+  if (orbAmp > 0.5 && orbSpikes.some(s => Math.abs(t - s.born) < 0.05)) {
+    pulseRings.push({ born: t });
+  }
+  // Expire rings that have completed their travel
+  const ringDuration = 2.5;
+  pulseRings = pulseRings.filter(r => (t - r.born) < ringDuration);
+
+  const W = orbCanvas.width, H = orbCanvas.height;
+  const cx = W / 2, cy = H / 2;
+  const maxR = Math.min(W, H) * 0.42;
+
+  orbCtx.clearRect(0, 0, W, H);
+
+  // Static background rings
+  for (let i = 1; i <= 5; i++) {
+    orbCtx.beginPath();
+    orbCtx.arc(cx, cy, maxR * i / 5, 0, Math.PI * 2);
+    orbCtx.strokeStyle = 'rgba(0,212,255,0.06)';
+    orbCtx.lineWidth = 1;
+    orbCtx.stroke();
+  }
+
+  // Pulse rings — travel speed scaled by amplitude
+  const minPR = 20, maxPR = 180;
+  pulseRings.forEach(ring => {
+    const dur = ringDuration * (1 - 0.36 * orbAmp); // faster at high amp
+    const age = Math.min((t - ring.born) / dur, 1);
+    const r   = minPR + (maxPR - minPR) * age;
+    const alpha = 0.7 * (1 - age);
+    orbCtx.beginPath();
+    orbCtx.arc(cx, cy, r, 0, Math.PI * 2);
+    orbCtx.strokeStyle = `rgba(0,212,255,${alpha.toFixed(3)})`;
+    orbCtx.lineWidth = 1.5;
+    orbCtx.stroke();
+  });
+
+  // Core orb radius driven by amplitude
+  const baseRadius = 55 + orbAmp * 45;
+  const glowRadius = baseRadius * 1.6;
+
+  // Core orb radial gradient
+  const grad = orbCtx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
+  grad.addColorStop(0,                           'rgba(255,255,255,0.95)');
+  grad.addColorStop(8   / glowRadius,            'rgba(0,212,255,0.8)');
+  grad.addColorStop(20  / glowRadius,            'rgba(0,212,255,0.5)');
+  grad.addColorStop(50  / glowRadius,            'rgba(0,212,255,0.25)');
+  grad.addColorStop(Math.min(90/glowRadius, 1),  'rgba(0,212,255,0)');
+  grad.addColorStop(1,                           'rgba(0,212,255,0)');
+
+  orbCtx.save();
+  orbCtx.shadowBlur = 40;
+  orbCtx.shadowColor = 'rgba(0,212,255,0.6)';
+  orbCtx.beginPath();
+  orbCtx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
+  orbCtx.fillStyle = grad;
+  orbCtx.fill();
+  orbCtx.restore();
+
+  // Rotating outer arc (dashed, 10rpm)
+  const r1 = maxR * 0.62;
+  const angle1 = (t / 60) * 10 * Math.PI * 2;
+  orbCtx.save();
+  orbCtx.translate(cx, cy);
+  orbCtx.rotate(angle1);
+  orbCtx.setLineDash([12, 8]);
+  orbCtx.beginPath();
+  orbCtx.arc(0, 0, r1, 0, Math.PI * 2);
+  orbCtx.strokeStyle = 'rgba(0,212,255,0.5)';
+  orbCtx.lineWidth = 2;
+  orbCtx.stroke();
+  orbCtx.restore();
+
+  // Counter-rotating arc (6rpm)
+  const r2 = maxR * 0.69;
+  const angle2 = -(t / 60) * 6 * Math.PI * 2;
+  orbCtx.save();
+  orbCtx.translate(cx, cy);
+  orbCtx.rotate(angle2);
+  orbCtx.setLineDash([6, 14]);
+  orbCtx.beginPath();
+  orbCtx.arc(0, 0, r2, 0, Math.PI * 2);
+  orbCtx.strokeStyle = 'rgba(0,212,255,0.25)';
+  orbCtx.lineWidth = 1;
+  orbCtx.stroke();
+  orbCtx.restore();
+
+  orbCtx.setLineDash([]);
+
+  // Corner HUD decorators
+  const inset = 15, arm = 20;
+  const corners = [
+    [inset, inset,         1, 1],
+    [W-inset, inset,      -1, 1],
+    [inset, H-inset,       1,-1],
+    [W-inset, H-inset,    -1,-1]
+  ];
+  orbCtx.strokeStyle = 'rgba(0,212,255,0.4)';
+  orbCtx.lineWidth = 1.5;
+  corners.forEach(([x, y, sx, sy]) => {
+    orbCtx.beginPath();
+    orbCtx.moveTo(x + sx * arm, y);
+    orbCtx.lineTo(x, y);
+    orbCtx.lineTo(x, y + sy * arm);
+    orbCtx.stroke();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EQUALISER CANVAS
+═══════════════════════════════════════════════════════════════ */
+const eqCanvas = document.getElementById('eq-canvas');
+const eqCtx    = eqCanvas.getContext('2d');
+
+const EQ_BARS  = 32;
+let eqFreqs = [], eqPhases = [], eqNoise = [];
+let eqNextSpikeT = 0;
+
+function initEq() {
+  for (let i = 0; i < EQ_BARS; i++) {
+    eqFreqs.push(0.8 + Math.random() * 2.7);
+    eqPhases.push(Math.random() * Math.PI * 2);
+    eqNoise.push(0);
+  }
+}
+
+function drawEq(t) {
+  const W = eqCanvas.width, H = eqCanvas.height;
+  eqCtx.clearRect(0, 0, W, H);
+
+  // Update noise: random walk + decay
+  for (let i = 0; i < EQ_BARS; i++) {
+    eqNoise[i] += (Math.random() - 0.5) * 0.08;
+    eqNoise[i] *= 0.88;
+    eqNoise[i] = Math.max(-0.3, Math.min(0.3, eqNoise[i]));
+  }
+
+  // Occasional large spike on 2–4 random bars every 3–6 seconds
+  if (t > eqNextSpikeT) {
+    const count = 2 + Math.floor(Math.random() * 3); // 2–4
+    for (let k = 0; k < count; k++) {
+      const idx = Math.floor(Math.random() * EQ_BARS);
+      eqNoise[idx] = 0.5 + Math.random() * 0.4;
+    }
+    eqNextSpikeT = t + 3 + Math.random() * 3;
+  }
+
+  const slotW = W / EQ_BARS;
+  const barW  = slotW * 0.48;
+
+  eqCtx.globalAlpha = 0.55;
+
+  for (let i = 0; i < EQ_BARS; i++) {
+    const raw  = Math.abs(Math.sin(t * eqFreqs[i] + eqPhases[i]) + eqNoise[i]);
+    const barH = 4 + raw * 0.45 * (H - 8);
+    const x    = i * slotW + (slotW - barW) / 2;
+    const y    = H - barH;
+
+    const grad = eqCtx.createLinearGradient(0, y, 0, H);
+    grad.addColorStop(0, '#00D4FF');
+    grad.addColorStop(1, '#00FF88');
+
+    eqCtx.fillStyle = grad;
+    eqCtx.fillRect(x, y, barW, barH);
+  }
+
+  eqCtx.globalAlpha = 1.0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RADAR CANVAS
+═══════════════════════════════════════════════════════════════ */
+const RADAR_PERIOD = 8; // seconds per revolution
+let radarBlips = [];
+
+function initRadar() {
+  radarBlips = [];
+  for (let i = 0; i < 5; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist  = 0.2 + Math.random() * 0.72;
+    radarBlips.push({ angle, dist, pingT: -999, pingR: 0 });
+  }
+}
+
+function drawRadar(t) {
+  const radarCanvas = document.getElementById('radar-canvas');
+  if (!radarCanvas) return;
+  const radarCtx = radarCanvas.getContext('2d');
+
+  const W = radarCanvas.width, H = radarCanvas.height;
+  const cx = W / 2, cy = H / 2;
+  const maxR = Math.min(W, H) * 0.44;
+
+  radarCtx.clearRect(0, 0, W, H);
+
+  // Rings + crosshairs
+  radarCtx.strokeStyle = 'rgba(0,212,255,0.1)';
+  radarCtx.lineWidth = 1;
+  for (let i = 1; i <= 4; i++) {
+    radarCtx.beginPath();
+    radarCtx.arc(cx, cy, maxR * i / 4, 0, Math.PI * 2);
+    radarCtx.stroke();
+  }
+  radarCtx.beginPath();
+  radarCtx.moveTo(cx - maxR, cy); radarCtx.lineTo(cx + maxR, cy);
+  radarCtx.moveTo(cx, cy - maxR); radarCtx.lineTo(cx, cy + maxR);
+  radarCtx.stroke();
+
+  // Compass labels
+  radarCtx.fillStyle = 'rgba(0,212,255,0.45)';
+  radarCtx.font = '10px "Courier New", monospace';
+  radarCtx.textAlign = 'center';
+  radarCtx.fillText('N', cx, cy - maxR + 12);
+  radarCtx.fillText('S', cx, cy + maxR - 4);
+  radarCtx.textAlign = 'right';
+  radarCtx.fillText('W', cx - maxR + 14, cy + 4);
+  radarCtx.textAlign = 'left';
+  radarCtx.fillText('E', cx + maxR - 4, cy + 4);
+
+  // Sweep angle
+  const sweepAngle = ((t % RADAR_PERIOD) / RADAR_PERIOD) * Math.PI * 2 - Math.PI / 2;
+
+  // Sweep trail (fading arc, 60°)
+  const trailArc = Math.PI / 3; // 60°
+  const steps = 40;
+  for (let s = 0; s < steps; s++) {
+    const a0 = sweepAngle - trailArc * ((s + 1) / steps);
+    const a1 = sweepAngle - trailArc * (s / steps);
+    const alpha = 0.4 * (1 - (steps - s) / steps);
+    radarCtx.beginPath();
+    radarCtx.moveTo(cx, cy);
+    radarCtx.arc(cx, cy, maxR, a0, a1);
+    radarCtx.closePath();
+    radarCtx.fillStyle = `rgba(0,212,255,${alpha.toFixed(3)})`;
+    radarCtx.fill();
+  }
+
+  // Sweep line
+  radarCtx.beginPath();
+  radarCtx.moveTo(cx, cy);
+  radarCtx.lineTo(
+    cx + Math.cos(sweepAngle) * maxR,
+    cy + Math.sin(sweepAngle) * maxR
+  );
+  radarCtx.strokeStyle = '#00D4FF';
+  radarCtx.lineWidth = 2;
+  radarCtx.stroke();
+
+  // Blips
+  radarBlips.forEach(blip => {
+    const bx = cx + Math.cos(blip.angle) * blip.dist * maxR;
+    const by = cy + Math.sin(blip.angle) * blip.dist * maxR;
+
+    // Check if sweep just passed over blip
+    let blipAngle = blip.angle - (-Math.PI / 2); // normalise to sweep start
+    if (blipAngle < 0) blipAngle += Math.PI * 2;
+    let sweepNorm = sweepAngle + Math.PI / 2;
+    if (sweepNorm < 0) sweepNorm += Math.PI * 2;
+    sweepNorm = sweepNorm % (Math.PI * 2);
+
+    const diff = Math.abs(sweepNorm - blipAngle);
+    const closeDiff = Math.min(diff, Math.PI * 2 - diff);
+    if (closeDiff < 0.07) {
+      blip.pingT = t;
+      blip.pingR = 0;
+    }
+
+    // Expanding ping ring
+    if (t - blip.pingT < 1.5) {
+      const age   = t - blip.pingT;
+      const pr    = 4 + age * 18;
+      const palpha = 0.8 * (1 - age / 1.5);
+      radarCtx.beginPath();
+      radarCtx.arc(bx, by, pr, 0, Math.PI * 2);
+      radarCtx.strokeStyle = `rgba(0,255,136,${palpha.toFixed(3)})`;
+      radarCtx.lineWidth = 1;
+      radarCtx.stroke();
+    }
+
+    // Blip dot
+    radarCtx.beginPath();
+    radarCtx.arc(bx, by, 3, 0, Math.PI * 2);
+    radarCtx.fillStyle = '#00FF88';
+    radarCtx.shadowBlur = 6;
+    radarCtx.shadowColor = '#00FF88';
+    radarCtx.fill();
+    radarCtx.shadowBlur = 0;
+  });
+
+  // Center dot
+  radarCtx.beginPath();
+  radarCtx.arc(cx, cy, 4, 0, Math.PI * 2);
+  radarCtx.fillStyle = '#00D4FF';
+  radarCtx.shadowBlur = 8;
+  radarCtx.shadowColor = '#00D4FF';
+  radarCtx.fill();
+  radarCtx.shadowBlur = 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CANVAS SIZING
+═══════════════════════════════════════════════════════════════ */
+function sizeCanvases() {
+  // Orb
+  orbCanvas.width  = orbCanvas.offsetWidth;
+  orbCanvas.height = orbCanvas.offsetHeight;
+
+  // Eq
+  eqCanvas.width  = eqCanvas.offsetWidth;
+  eqCanvas.height = eqCanvas.offsetHeight;
+
+  // Radar (may not exist yet if tiles not built)
+  const radarCanvas = document.getElementById('radar-canvas');
+  if (radarCanvas) {
+    radarCanvas.width  = radarCanvas.offsetWidth;
+    radarCanvas.height = radarCanvas.offsetHeight;
+  }
+
+  // Bg
+  resizeBgCanvas();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN ANIMATION LOOP
+═══════════════════════════════════════════════════════════════ */
+let animStart = null;
+let lastFrame = null;
+
+function animate(ts) {
+  if (!animStart) animStart = ts;
+  if (!lastFrame) lastFrame = ts;
+  const t  = (ts - animStart) / 1000;
+  const dt = ts - lastFrame;
+  lastFrame = ts;
+
+  drawBgCanvas(dt);
+  drawOrb(t);
+  drawEq(t);
+  drawRadar(t);
+
+  requestAnimationFrame(animate);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SPARKLINE UPDATE LOOP
+═══════════════════════════════════════════════════════════════ */
+let hudData = null;
+
+function startSparkUpdates() {
+  setInterval(() => {
+    if (hudData) updateSparkData(hudData.metrics);
+  }, 2000);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN MODAL
+═══════════════════════════════════════════════════════════════ */
+let topBarClickCount = 0;
+let topBarClickTimer = null;
+
+document.getElementById('top-bar').addEventListener('click', () => {
+  topBarClickCount++;
+  clearTimeout(topBarClickTimer);
+  topBarClickTimer = setTimeout(() => { topBarClickCount = 0; }, 600);
+  if (topBarClickCount >= 3) {
+    topBarClickCount = 0;
+    openAdmin();
+  }
+});
+
+function openAdmin() {
+  if (!hudData) return;
+
+  document.getElementById('admin-sysname').value = hudData.system || '';
+
+  const container = document.getElementById('admin-metrics-container');
+  container.innerHTML = '';
+
+  hudData.metrics.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'admin-metric-row';
+    row.innerHTML = `
+      <h3>Metric ${i + 1}</h3>
+      <div class="admin-metric-grid">
+        <div class="admin-field">
+          <label>Label</label>
+          <input type="text" data-id="${m.id}" data-field="label" value="${m.label}">
+        </div>
+        <div class="admin-field">
+          <label>Value</label>
+          <input type="text" data-id="${m.id}" data-field="value" value="${m.value}">
+        </div>
+        <div class="admin-field">
+          <label>Unit</label>
+          <input type="text" data-id="${m.id}" data-field="unit" value="${m.unit}">
+        </div>
+        <div class="admin-field">
+          <label>Trend</label>
+          <input type="text" data-id="${m.id}" data-field="trend" value="${m.trend}">
+        </div>
+        <div class="admin-field" style="grid-column:1/-1">
+          <label>Status</label>
+          <select data-id="${m.id}" data-field="status">
+            <option value="normal"   ${m.status==='normal'  ?'selected':''}>NORMAL</option>
+            <option value="good"     ${m.status==='good'    ?'selected':''}>GOOD</option>
+            <option value="warning"  ${m.status==='warning' ?'selected':''}>WARNING</option>
+            <option value="critical" ${m.status==='critical'?'selected':''}>CRITICAL</option>
+          </select>
+        </div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  document.getElementById('admin-modal').classList.add('open');
+}
+
+document.getElementById('admin-cancel').addEventListener('click', () => {
+  document.getElementById('admin-modal').classList.remove('open');
+});
+
+document.getElementById('admin-save').addEventListener('click', async () => {
+  if (!hudData) return;
+
+  hudData.system = document.getElementById('admin-sysname').value.trim() || hudData.system;
+
+  document.querySelectorAll('#admin-metrics-container [data-id]').forEach(el => {
+    const id    = el.dataset.id;
+    const field = el.dataset.field;
+    const m     = hudData.metrics.find(x => x.id === id);
+    if (m) m[field] = el.value;
+  });
+
+  await DB.save(hudData);
+  applyHudData(hudData);
+  document.getElementById('admin-modal').classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   APPLY HUD DATA TO UI
+═══════════════════════════════════════════════════════════════ */
+function applyHudData(data) {
+  hudData = data;
+
+  // System name
+  document.getElementById('sys-name').textContent = data.system || 'MEREBASE.OS';
+  document.title = (data.system || 'MEREBASE.OS') + ' — HUD';
+
+  // Rebuild metric columns
+  buildMetricColumns(data.metrics);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════ */
+async function init() {
+  // Load data
+  let data = await DB.load();
+
+  if (!data) {
+    data = JSON.parse(JSON.stringify(MOCK_HUD));
+    await DB.save(data);
+  }
+
+  hudData = data;
+
+  // Sparkline data
+  initSparkData(data.metrics);
+
+  // Boot sequence
+  await runBoot(data.system || 'MEREBASE.OS');
+
+  // Apply data to UI
+  applyHudData(data);
+
+  // Size canvases (after app is visible)
+  sizeCanvases();
+
+  // Init animation helpers
+  initPulseRings();
+  initEq();
+  initRadar();
+
+  // Start clock
+  startClock();
+
+  // Start animation loop
+  requestAnimationFrame(animate);
+
+  // Start burst log scheduler
+  setTimeout(scheduleBurst, 1200);
+  setTimeout(scheduleBurstB, 1800);
+
+  // Start sparkline updates
+  startSparkUpdates();
+
+  // Schedule screen flicker
+  scheduleFlicker();
+}
+
+// Resize handler
+window.addEventListener('resize', () => {
+  sizeCanvases();
+  // Redraw sparklines
+  if (hudData) {
+    hudData.metrics.forEach(m => {
+      const allSparks = document.querySelectorAll('#spark-' + m.id);
+      allSparks.forEach(canvas => {
+        canvas.width  = canvas.offsetWidth;
+        canvas.height = parseInt(canvas.style.height) || canvas.offsetHeight || 48;
+        drawSparkline(m.id, m.status);
+      });
+    });
+  }
+});
+
+init();
+</script>
+</body>
+</html>

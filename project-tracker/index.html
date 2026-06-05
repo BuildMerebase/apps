@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project tracker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F8F6F3; --surface: #FFFFFF; --border: #E8E3DD;
+    --ink: #1C1A18; --muted: #7A7068; --subtle: #B8B0A6;
+    --amber: #D97706; --amber-dk: #B45309; --amber-bg: rgba(217,119,6,0.08); --amber-border: rgba(217,119,6,0.25);
+    --green: #059669; --green-bg: rgba(5,150,105,0.08);
+    --blue: #2563EB; --blue-bg: rgba(37,99,235,0.08);
+    --red: #DC2626; --red-bg: rgba(220,38,38,0.06);
+    --r: 8px; --shadow: 0 1px 3px rgba(28,26,24,0.06), 0 8px 24px rgba(28,26,24,0.04);
+  }
+  body { font-family: system-ui,-apple-system,sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; }
+
+  /* Nav */
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.9rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+  .nav-logo { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; cursor: pointer; }
+  .nav-logo span { color: var(--amber); }
+  .nav-breadcrumb { font-size: 0.82rem; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; }
+  .nav-breadcrumb a { color: var(--amber-dk); cursor: pointer; text-decoration: none; }
+  .nav-breadcrumb a:hover { text-decoration: underline; }
+
+  /* Pages */
+  .page { display: none; padding: 2rem 1.5rem; max-width: 860px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* Buttons */
+  .btn { padding: 0.65rem 1.1rem; border-radius: var(--r); border: none; font-size: 0.85rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 0.4rem; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--amber); color: #fff; }
+  .btn-primary:hover { background: var(--amber-dk); }
+  .btn-ghost { background: none; border: 1.5px solid var(--border); color: var(--muted); }
+  .btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+  .btn-danger { background: none; border: 1.5px solid #FECACA; color: var(--red); }
+  .btn-danger:hover { background: var(--red-bg); }
+  .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.75rem; }
+
+  /* Page header */
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
+  .page-title { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; }
+  .page-title span { color: var(--amber); }
+  .page-sub { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; }
+
+  /* Project cards */
+  .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+  .project-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem; box-shadow: var(--shadow); cursor: pointer; transition: all 0.15s; border-left: 4px solid var(--amber); }
+  .project-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(28,26,24,0.1); }
+  .project-card-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+  .project-card-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .project-card-meta { display: flex; align-items: center; justify-content: space-between; }
+  .status-badge { font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .status-active  { background: var(--blue-bg);  color: var(--blue); }
+  .status-on-hold { background: var(--amber-bg); color: var(--amber-dk); }
+  .status-done    { background: var(--green-bg); color: var(--green); }
+  .task-count { font-size: 0.75rem; color: var(--muted); }
+
+  /* Task list */
+  .task-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .task-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 0.85rem 1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: var(--shadow); }
+  .task-item.done { opacity: 0.6; }
+  .task-check-btn { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; background: none; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .task-check-btn:hover { border-color: var(--green); }
+  .task-item.done .task-check-btn { background: var(--green); border-color: var(--green); }
+  .task-item.done .task-check-btn::after { content: ''; width: 5px; height: 9px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg) translate(-1px,-1px); display: block; }
+  .task-item-text { flex: 1; font-size: 0.9rem; }
+  .task-item.done .task-item-text { text-decoration: line-through; color: var(--muted); }
+  .task-item-notes { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }
+  .task-del-btn { background: none; border: none; color: var(--subtle); cursor: pointer; font-size: 1.1rem; padding: 0.2rem; border-radius: 4px; opacity: 0; transition: opacity 0.15s; }
+  .task-item:hover .task-del-btn { opacity: 1; }
+  .task-del-btn:hover { background: var(--red-bg); color: var(--red); }
+
+  /* Forms */
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.5rem; box-shadow: var(--shadow); }
+  .form-group { margin-bottom: 1rem; }
+  label { display: block; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+  input[type=text], textarea, select { width: 100%; padding: 0.7rem 0.9rem; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 0.9rem; font-family: inherit; background: var(--bg); color: var(--ink); outline: none; transition: border-color 0.15s; }
+  input:focus, textarea:focus, select:focus { border-color: var(--amber); }
+  textarea { resize: vertical; min-height: 80px; }
+  .form-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  /* Add task inline */
+  .add-task-row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .add-task-input { flex: 1; padding: 0.65rem 0.9rem; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 0.875rem; font-family: inherit; background: var(--surface); color: var(--ink); outline: none; transition: border-color 0.15s; }
+  .add-task-input:focus { border-color: var(--amber); }
+  .add-task-input::placeholder { color: var(--subtle); }
+
+  .section-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between; }
+  .empty { padding: 2.5rem; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); }
+  .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .empty-text { font-size: 0.875rem; color: var(--muted); }
+  .loading { padding: 3rem; text-align: center; color: var(--muted); }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 100px; margin-top: 0.5rem; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 100px; transition: width 0.3s; }
+  .color-dots { display: flex; gap: 0.4rem; }
+  .color-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.12s; }
+  .color-dot.sel { border-color: var(--ink); transform: scale(1.2); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo" onclick="goHome()">mere<span>base</span></div>
+  <div class="nav-breadcrumb" id="breadcrumb"></div>
+</nav>
+
+<!-- Page: Projects list -->
+<div class="page active" id="page-home">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Project <span>tracker</span></h1>
+      <p class="page-sub">Manage your projects and tasks in one place.</p>
+    </div>
+    <button class="btn btn-primary" onclick="goPage('new-project')">+ New project</button>
+  </div>
+  <div id="projects-list"><div class="loading">Loading…</div></div>
+</div>
+
+<!-- Page: Project detail -->
+<div class="page" id="page-project">
+  <div class="page-header" id="project-header"></div>
+  <div class="section-title">
+    <span id="tasks-label">Tasks</span>
+  </div>
+  <div class="add-task-row">
+    <input class="add-task-input" id="new-task-input" placeholder="Add a task…" maxlength="120">
+    <button class="btn btn-primary" id="add-task-btn">Add</button>
+  </div>
+  <div id="tasks-list"><div class="loading">Loading…</div></div>
+</div>
+
+<!-- Page: New project form -->
+<div class="page" id="page-new-project">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">New <span>project</span></h1>
+    </div>
+  </div>
+  <div class="form-card">
+    <div class="form-group">
+      <label>Project name</label>
+      <input type="text" id="np-name" placeholder="e.g. Website redesign" maxlength="80">
+    </div>
+    <div class="form-group">
+      <label>Description (optional)</label>
+      <textarea id="np-desc" placeholder="What is this project about?"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="np-status">
+        <option value="active">Active</option>
+        <option value="on-hold">On hold</option>
+        <option value="done">Done</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Colour</label>
+      <div class="color-dots" id="np-colors"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="create-project-btn">Create project</button>
+      <button class="btn btn-ghost" onclick="goHome()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROJECT_COLORS = ['#D97706','#059669','#2563EB','#8B5CF6','#EC4899','#EF4444','#0EA5E9'];
+let selectedColor = PROJECT_COLORS[0];
+
+// ── API ───────────────────────────────────────────────────────────────────────
+const MOCK_PROJ = [], MOCK_TASK = [], MOCK_REL = [];
+let _id = 1;
+const API = window.MB ? {
+  async listEntities(type) {
+    const r = await fetch(`${MB.api}/entities?type=${type}&app_id=${MB.app_id}`, {credentials:'include'});
+    return (await r.json()).entities || [];
+  },
+  async saveEntity(id, type, name, data) {
+    const body = {type, name, data, app_id: MB.app_id};
+    if (id) body.id = id;
+    const r = await fetch(`${MB.api}/entities`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+    const j = await r.json();
+    return j.entity || j;
+  },
+  async deleteEntity(id) {
+    await fetch(`${MB.api}/entities/delete`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({id})});
+  },
+  async createRelation(from_id, to_id, relation) {
+    await fetch(`${MB.api}/relations`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({from_id, to_id, relation, app_id: MB.app_id})});
+  },
+  async getRelations(from_id) {
+    const r = await fetch(`${MB.api}/relations?from_id=${from_id}`, {credentials:'include'});
+    return (await r.json()).relations || [];
+  },
+  async deleteRelation(id) {
+    await fetch(`${MB.api}/relations/delete`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({id})});
+  }
+} : {
+  async listEntities(type) { return (type==='project'?MOCK_PROJ:MOCK_TASK).map(x=>({...x})); },
+  async saveEntity(id, type, name, data) {
+    const store = type==='project'?MOCK_PROJ:MOCK_TASK;
+    if (id) { const e=store.find(x=>x.id===id); if(e){e.name=name;e.data=data;return{...e};} }
+    const e={id:String(_id++),type,name,data}; store.push(e); return {...e};
+  },
+  async deleteEntity(id) {
+    [MOCK_PROJ,MOCK_TASK].forEach(s=>{const i=s.findIndex(x=>x.id===id);if(i>-1)s.splice(i,1);});
+    MOCK_REL.filter(r=>r.from_id===id||r.to_id===id).forEach(r=>{const i=MOCK_REL.indexOf(r);if(i>-1)MOCK_REL.splice(i,1);});
+  },
+  async createRelation(from_id, to_id, relation) { MOCK_REL.push({id:String(_id++),from_id,to_id,relation}); },
+  async getRelations(from_id) { return MOCK_REL.filter(r=>r.from_id===from_id).map(x=>({...x})); },
+  async deleteRelation(id) { const i=MOCK_REL.findIndex(x=>x.id===id); if(i>-1)MOCK_REL.splice(i,1); }
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentProjectId = null, currentProject = null, projectTasks = [], taskRelations = [];
+
+// ── Routing ───────────────────────────────────────────────────────────────────
+function goPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  updateBreadcrumb(name);
+}
+function goHome() { currentProjectId = null; currentProject = null; goPage('home'); loadProjects(); }
+function updateBreadcrumb(page) {
+  const bc = document.getElementById('breadcrumb');
+  if (page === 'home') { bc.innerHTML = ''; return; }
+  if (page === 'new-project') { bc.innerHTML = '<a onclick="goHome()">Projects</a> / New project'; return; }
+  if (page === 'project' && currentProject) {
+    bc.innerHTML = `<a onclick="goHome()">Projects</a> / ${esc(currentProject.name)}`;
+  }
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Projects list ─────────────────────────────────────────────────────────────
+async function loadProjects() {
+  const wrap = document.getElementById('projects-list');
+  const projects = await API.listEntities('project');
+  if (!projects.length) {
+    wrap.innerHTML = `<div class="empty"><div class="empty-icon">📂</div><p class="empty-text">No projects yet — create your first one.</p></div>`;
+    return;
+  }
+  const allTasks = await API.listEntities('task');
+  const allRels  = await Promise.all(projects.map(p => API.getRelations(p.id)));
+
+  wrap.innerHTML = `<div class="projects-grid">${projects.map((p,i) => {
+    const rels = allRels[i] || [];
+    const ptasks = rels.map(r => allTasks.find(t => t.id === r.to_id)).filter(Boolean);
+    const done = ptasks.filter(t => t.data?.done).length;
+    const pct = ptasks.length ? Math.round(done/ptasks.length*100) : 0;
+    const color = p.data?.color || '#D97706';
+    return `
+      <div class="project-card" data-proj="${p.id}" style="border-left-color:${color}">
+        <div class="project-card-title">${esc(p.name)}</div>
+        <div class="project-card-desc">${esc(p.data?.description || 'No description')}</div>
+        <div class="project-card-meta">
+          <span class="status-badge status-${(p.data?.status||'active').replace(' ','-')}">${p.data?.status||'active'}</span>
+          <span class="task-count">${ptasks.length} task${ptasks.length!==1?'s':''}</span>
+        </div>
+        ${ptasks.length ? `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>` : ''}
+      </div>`;
+  }).join('')}</div>`;
+}
+
+document.getElementById('projects-list').addEventListener('click', e => {
+  const card = e.target.closest('[data-proj]');
+  if (card) openProject(card.dataset.proj);
+});
+
+// ── Project detail ─────────────────────────────────────────────────────────────
+async function openProject(id) {
+  currentProjectId = id;
+  goPage('project');
+  const projects = await API.listEntities('project');
+  currentProject = projects.find(p => p.id === id);
+  if (!currentProject) { goHome(); return; }
+  updateBreadcrumb('project');
+
+  const color = currentProject.data?.color || '#D97706';
+  document.getElementById('project-header').innerHTML = `
+    <div>
+      <h1 class="page-title" style="color:${color}">${esc(currentProject.name)}</h1>
+      <p class="page-sub">${esc(currentProject.data?.description || '')}</p>
+    </div>
+    <div style="display:flex;gap:0.5rem">
+      <span class="status-badge status-${(currentProject.data?.status||'active').replace(' ','-')}" style="align-self:flex-start">${currentProject.data?.status||'active'}</span>
+      <button class="btn btn-danger btn-sm" id="del-project-btn">Delete project</button>
+    </div>`;
+
+  document.getElementById('del-project-btn').addEventListener('click', async () => {
+    if (!confirm('Delete this project and all its tasks?')) return;
+    const rels = await API.getRelations(id);
+    for (const r of rels) { await API.deleteEntity(r.to_id); await API.deleteRelation(r.id); }
+    await API.deleteEntity(id);
+    goHome();
+  });
+
+  await loadTasks();
+}
+
+async function loadTasks() {
+  if (!currentProjectId) return;
+  taskRelations = await API.getRelations(currentProjectId);
+  const allTasks = await API.listEntities('task');
+  projectTasks = taskRelations.map(r => ({rel: r, task: allTasks.find(t => t.id === r.to_id)})).filter(x => x.task);
+
+  const label = document.getElementById('tasks-label');
+  const done = projectTasks.filter(x => x.task.data?.done).length;
+  label.textContent = `Tasks — ${done}/${projectTasks.length} done`;
+
+  const wrap = document.getElementById('tasks-list');
+  if (!projectTasks.length) {
+    wrap.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><p class="empty-text">No tasks yet — add one above.</p></div>`;
+    return;
+  }
+
+  wrap.innerHTML = `<div class="task-list">${projectTasks.map(({task, rel}) => `
+    <div class="task-item ${task.data?.done?'done':''}" data-tid="${task.id}" data-rid="${rel.id}">
+      <button class="task-check-btn" data-toggle="${task.id}"></button>
+      <div style="flex:1">
+        <div class="task-item-text">${esc(task.name)}</div>
+        ${task.data?.notes ? `<div class="task-item-notes">${esc(task.data.notes)}</div>` : ''}
+      </div>
+      <button class="task-del-btn" data-tdel="${task.id}" data-rdel="${rel.id}">×</button>
+    </div>`).join('')}</div>`;
+}
+
+document.getElementById('tasks-list').addEventListener('click', async e => {
+  const toggle = e.target.closest('[data-toggle]');
+  const del    = e.target.closest('[data-tdel]');
+  if (toggle) {
+    const task = projectTasks.find(x => x.task.id === toggle.dataset.toggle)?.task;
+    if (!task) return;
+    task.data = {...(task.data||{}), done: !task.data?.done};
+    await API.saveEntity(task.id, 'task', task.name, task.data);
+    await loadTasks();
+  }
+  if (del) {
+    await API.deleteEntity(del.dataset.tdel);
+    await API.deleteRelation(del.dataset.rdel);
+    await loadTasks();
+  }
+});
+
+document.getElementById('add-task-btn').addEventListener('click', async () => {
+  const inp = document.getElementById('new-task-input');
+  const name = inp.value.trim();
+  if (!name || !currentProjectId) return;
+  const task = await API.saveEntity(null, 'task', name, { done: false, created: Date.now() });
+  await API.createRelation(currentProjectId, task.id, 'has_task');
+  inp.value = '';
+  await loadTasks();
+});
+
+document.getElementById('new-task-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('add-task-btn').click();
+});
+
+// ── New project form ───────────────────────────────────────────────────────────
+const npColors = document.getElementById('np-colors');
+PROJECT_COLORS.forEach(c => {
+  const d = document.createElement('div');
+  d.className = 'color-dot' + (c===selectedColor?' sel':'');
+  d.style.background = c;
+  d.addEventListener('click', () => {
+    selectedColor = c;
+    npColors.querySelectorAll('.color-dot').forEach(x=>x.classList.remove('sel'));
+    d.classList.add('sel');
+  });
+  npColors.appendChild(d);
+});
+
+document.getElementById('create-project-btn').addEventListener('click', async () => {
+  const name = document.getElementById('np-name').value.trim();
+  if (!name) { document.getElementById('np-name').focus(); return; }
+  const desc   = document.getElementById('np-desc').value.trim();
+  const status = document.getElementById('np-status').value;
+  await API.saveEntity(null, 'project', name, { description: desc, status, color: selectedColor, created: Date.now() });
+  document.getElementById('np-name').value = '';
+  document.getElementById('np-desc').value = '';
+  goHome();
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadProjects();
+</script>
+</body>
+</html>

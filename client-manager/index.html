@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client manager</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F8F6F3; --surface: #FFFFFF; --border: #E8E3DD;
+  --ink: #1C1A18; --muted: #7A7068; --subtle: #B8B0A6;
+  --amber: #D97706; --amber-dk: #B45309;
+  --amber-bg: rgba(217,119,6,0.08); --amber-border: rgba(217,119,6,0.22);
+  --green: #059669; --green-bg: rgba(5,150,105,0.09);
+  --blue: #2563EB; --blue-bg: rgba(37,99,235,0.08);
+  --purple: #7C3AED; --purple-bg: rgba(124,58,237,0.08);
+  --red: #DC2626; --red-bg: rgba(220,38,38,0.06);
+  --r: 8px;
+  --shadow-sm: 0 1px 2px rgba(28,26,24,0.05);
+  --shadow: 0 1px 3px rgba(28,26,24,0.06), 0 6px 20px rgba(28,26,24,0.05);
+}
+body { font-family: system-ui,-apple-system,sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; }
+
+/* ── Nav ───────────────────────────────────────────────────────────── */
+nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; height: 52px; display: flex; align-items: center; gap: 0; position: sticky; top: 0; z-index: 100; }
+.nav-logo { font-size: 0.95rem; font-weight: 800; letter-spacing: -0.02em; cursor: pointer; white-space: nowrap; margin-right: 0.75rem; }
+.nav-logo span { color: var(--amber); }
+.breadcrumb { display: flex; align-items: center; gap: 0; font-size: 0.82rem; color: var(--muted); overflow: hidden; }
+.breadcrumb-item { display: flex; align-items: center; gap: 0; white-space: nowrap; }
+.breadcrumb-item a { color: var(--amber-dk); cursor: pointer; padding: 0.2rem 0.4rem; border-radius: 4px; transition: background 0.1s; }
+.breadcrumb-item a:hover { background: var(--amber-bg); }
+.breadcrumb-sep { color: var(--subtle); margin: 0 0.15rem; font-size: 0.7rem; }
+.breadcrumb-current { color: var(--ink); font-weight: 600; padding: 0.2rem 0.4rem; overflow: hidden; text-overflow: ellipsis; }
+.nav-actions { margin-left: auto; display: flex; gap: 0.5rem; flex-shrink: 0; }
+
+/* ── Layout ────────────────────────────────────────────────────────── */
+.container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+/* ── Buttons ───────────────────────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.55rem 1rem; border-radius: var(--r); border: none; font-size: 0.82rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--amber); color: #fff; }
+.btn-primary:hover { background: var(--amber-dk); }
+.btn-ghost { background: none; border: 1.5px solid var(--border); color: var(--muted); }
+.btn-ghost:hover { border-color: var(--ink); color: var(--ink); background: none; }
+.btn-danger { background: none; border: 1.5px solid #FECACA; color: var(--red); }
+.btn-danger:hover { background: var(--red-bg); }
+.btn-sm { padding: 0.3rem 0.65rem; font-size: 0.72rem; }
+.btn-icon { padding: 0.4rem; border-radius: 6px; }
+
+/* ── Cards ─────────────────────────────────────────────────────────── */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); }
+
+/* ── Page header ───────────────────────────────────────────────────── */
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.page-head-left h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; }
+.page-head-left h1 span { color: var(--amber); }
+.page-head-left p { font-size: 0.83rem; color: var(--muted); margin-top: 0.2rem; }
+
+/* ── Status badges ─────────────────────────────────────────────────── */
+.badge { display: inline-flex; align-items: center; font-size: 0.68rem; font-weight: 700; padding: 0.18rem 0.6rem; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.badge-active   { background: var(--green-bg); color: var(--green); }
+.badge-prospect { background: var(--blue-bg);  color: var(--blue); }
+.badge-inactive { background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
+.badge-open     { background: var(--amber-bg); color: var(--amber-dk); }
+.badge-complete { background: var(--green-bg); color: var(--green); }
+.badge-paused   { background: var(--purple-bg); color: var(--purple); }
+
+/* ── Client list ───────────────────────────────────────────────────── */
+.client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.85rem; }
+.client-card { padding: 1.25rem; cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent; }
+.client-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(28,26,24,0.09); }
+.client-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.6rem; }
+.client-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 800; color: #fff; flex-shrink: 0; }
+.client-name { font-size: 1rem; font-weight: 700; margin-bottom: 0.15rem; }
+.client-company { font-size: 0.78rem; color: var(--muted); }
+.client-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 0.85rem; font-size: 0.75rem; color: var(--subtle); }
+
+/* ── Detail sections ───────────────────────────────────────────────── */
+.detail-header { display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.5rem; margin-bottom: 1.25rem; box-shadow: var(--shadow); }
+.detail-avatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 800; color: #fff; flex-shrink: 0; }
+.detail-name { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.025em; }
+.detail-sub { font-size: 0.82rem; color: var(--muted); margin-top: 0.2rem; }
+.detail-fields { display: flex; gap: 1.5rem; margin-top: 0.6rem; flex-wrap: wrap; }
+.detail-field { font-size: 0.78rem; }
+.detail-field-label { color: var(--subtle); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.1rem; }
+.detail-field-value { color: var(--ink); font-weight: 500; }
+.detail-actions { display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-end; }
+
+/* ── Projects list ─────────────────────────────────────────────────── */
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.section-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.project-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.project-row { display: flex; align-items: center; gap: 0.85rem; padding: 0.9rem 1rem; cursor: pointer; transition: background 0.1s; }
+.project-row:hover { background: var(--bg); }
+.project-row:first-child { border-radius: var(--r) var(--r) 0 0; }
+.project-row:last-child { border-radius: 0 0 var(--r) var(--r); border-bottom: none !important; }
+.project-row { border-bottom: 1px solid var(--border); }
+.project-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.project-row-name { flex: 1; font-size: 0.9rem; font-weight: 600; }
+.project-row-meta { font-size: 0.75rem; color: var(--muted); }
+.project-row-chevron { color: var(--subtle); font-size: 0.8rem; }
+
+/* ── Notes ─────────────────────────────────────────────────────────── */
+.note-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.note-item { padding: 1rem; border-radius: var(--r); background: var(--surface); border: 1px solid var(--border); }
+.note-item-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem; }
+.note-type-badge { font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.04em; }
+.note-call    { background: var(--green-bg); color: var(--green); }
+.note-email   { background: var(--blue-bg);  color: var(--blue); }
+.note-meeting { background: var(--purple-bg); color: var(--purple); }
+.note-note    { background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
+.note-date { font-size: 0.7rem; color: var(--subtle); }
+.note-body { font-size: 0.85rem; color: var(--ink); line-height: 1.55; }
+.note-del { background: none; border: none; color: var(--subtle); cursor: pointer; padding: 0.2rem; border-radius: 4px; font-size: 1rem; opacity: 0; transition: opacity 0.15s; }
+.note-item:hover .note-del { opacity: 1; }
+.note-del:hover { background: var(--red-bg); color: var(--red); }
+
+/* ── Forms ─────────────────────────────────────────────────────────── */
+.form-wrap { max-width: 560px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-group { margin-bottom: 1.1rem; }
+.form-label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+.form-input, .form-select, .form-textarea { width: 100%; padding: 0.65rem 0.9rem; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 0.88rem; font-family: inherit; background: var(--bg); color: var(--ink); outline: none; transition: border-color 0.15s; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--amber); background: var(--surface); }
+.form-textarea { resize: vertical; min-height: 90px; line-height: 1.55; }
+.form-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.color-picker { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.cp-dot { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2.5px solid transparent; transition: all 0.12s; }
+.cp-dot.sel { border-color: var(--ink); transform: scale(1.18); }
+
+/* ── Add note inline ─────────────────────────────────────────────────── */
+.add-note-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm); }
+.add-note-head { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.note-type-btn { padding: 0.3rem 0.7rem; border-radius: 100px; border: 1.5px solid var(--border); background: none; font-size: 0.72rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.12s; color: var(--muted); }
+.note-type-btn.active { border-color: var(--amber); background: var(--amber-bg); color: var(--amber-dk); }
+.add-note-textarea { width: 100%; padding: 0.65rem 0.9rem; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 0.85rem; font-family: inherit; background: var(--bg); color: var(--ink); outline: none; resize: none; min-height: 70px; line-height: 1.5; transition: border-color 0.15s; }
+.add-note-textarea:focus { border-color: var(--amber); background: var(--surface); }
+
+/* ── Stat strip ─────────────────────────────────────────────────────── */
+.stat-strip { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.stat-card { flex: 1; min-width: 100px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1rem; text-align: center; box-shadow: var(--shadow-sm); }
+.stat-num { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; color: var(--amber-dk); line-height: 1; }
+.stat-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 0.2rem; }
+
+/* ── Empty / Loading ─────────────────────────────────────────────────── */
+.empty { padding: 3rem 1rem; text-align: center; }
+.empty-icon { font-size: 2.2rem; margin-bottom: 0.6rem; }
+.empty-text { font-size: 0.875rem; color: var(--muted); margin-bottom: 1.25rem; }
+.loading { padding: 3rem; text-align: center; color: var(--muted); font-size: 0.875rem; }
+
+@media (max-width: 600px) {
+  .container { padding: 1.25rem 1rem; }
+  .client-grid { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .detail-header { grid-template-columns: auto 1fr; }
+  .detail-actions { grid-column: 1/-1; flex-direction: row; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo" onclick="route('clients')">mere<span>base</span></div>
+  <div class="breadcrumb" id="breadcrumb"></div>
+  <div class="nav-actions" id="nav-actions"></div>
+</nav>
+
+<div class="container" id="app"><div class="loading">Loading…</div></div>
+
+<script>
+// ── Brand colours ──────────────────────────────────────────────────────────
+const COLORS = ['#D97706','#059669','#2563EB','#7C3AED','#EC4899','#EF4444','#0EA5E9','#64748B'];
+function avatarColor(name) {
+  const i = (name || '').split('').reduce((a,c)=>a+c.charCodeAt(0),0) % COLORS.length;
+  return COLORS[i];
+}
+function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(ts) { return ts ? new Date(ts).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : ''; }
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+
+// ── API ───────────────────────────────────────────────────────────────────
+const MOCK = { proj:[], client:[], note:[], rel:[] };
+let _mid = 1;
+
+const API = window.MB ? {
+  async list(type) {
+    const r = await fetch(`${MB.api}/entities?type=${type}&app_id=${MB.app_id}`,{credentials:'include'});
+    return (await r.json()).entities || [];
+  },
+  async save(id, type, name, data) {
+    const body = {type, name, data, app_id: MB.app_id};
+    if (id) body.id = id;
+    const r = await fetch(`${MB.api}/entities`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(body)});
+    const j = await r.json(); return j.entity || j;
+  },
+  async del(id) {
+    await fetch(`${MB.api}/entities/delete`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({id})});
+  },
+  async addRel(from_id, to_id, relation) {
+    const r = await fetch(`${MB.api}/relations`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({from_id,to_id,relation,app_id:MB.app_id})});
+    return (await r.json()).relation || {};
+  },
+  async getRels(from_id) {
+    const r = await fetch(`${MB.api}/relations?from_id=${from_id}`,{credentials:'include'});
+    return (await r.json()).relations || [];
+  },
+  async delRel(id) {
+    await fetch(`${MB.api}/relations/delete`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({id})});
+  }
+} : {
+  async list(type) { return MOCK[type]||[]; },
+  async save(id, type, name, data) {
+    const store = MOCK[type]||(MOCK[type]=[]);
+    if (id) { const e=store.find(x=>x.id===id); if(e){e.name=name;e.data=data;return{...e};} }
+    const e={id:uid(),type,name,data}; store.push(e); return {...e};
+  },
+  async del(id) {
+    Object.values(MOCK).forEach(s=>{ if(Array.isArray(s)){const i=s.findIndex(x=>x.id===id);if(i>-1)s.splice(i,1);} });
+    MOCK.rel = (MOCK.rel||[]).filter(r=>r.from_id!==id&&r.to_id!==id);
+  },
+  async addRel(from_id,to_id,relation) { const r={id:uid(),from_id,to_id,relation}; (MOCK.rel||(MOCK.rel=[])).push(r); return r; },
+  async getRels(from_id) { return (MOCK.rel||[]).filter(r=>r.from_id===from_id); },
+  async delRel(id) { MOCK.rel=(MOCK.rel||[]).filter(r=>r.id!==id); }
+};
+
+// ── Router ────────────────────────────────────────────────────────────────
+let _page = 'clients', _clientId = null, _projectId = null;
+let _client = null, _project = null;
+
+function route(page, clientId, projectId) {
+  _page = page; _clientId = clientId||null; _projectId = projectId||null;
+  render();
+}
+
+// ── Pages ─────────────────────────────────────────────────────────────────
+async function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = '<div class="loading">Loading…</div>';
+  setBreadcrumb();
+
+  if (_page === 'clients')       await renderClients();
+  if (_page === 'new-client')    renderNewClient();
+  if (_page === 'client')        await renderClient();
+  if (_page === 'new-project')   renderNewProject();
+  if (_page === 'project')       await renderProject();
+}
+
+function setBreadcrumb() {
+  const bc = document.getElementById('breadcrumb');
+  const na = document.getElementById('nav-actions');
+  const sep = '<span class="breadcrumb-sep">›</span>';
+
+  if (_page === 'clients') {
+    bc.innerHTML = '<span class="breadcrumb-current">Clients</span>';
+    na.innerHTML = '<button class="btn btn-primary btn-sm" onclick="route(\'new-client\')">+ New client</button>';
+  } else if (_page === 'new-client') {
+    bc.innerHTML = `<span class="breadcrumb-item"><a onclick="route('clients')">Clients</a>${sep}</span><span class="breadcrumb-current">New client</span>`;
+    na.innerHTML = '';
+  } else if (_page === 'client' && _client) {
+    bc.innerHTML = `<span class="breadcrumb-item"><a onclick="route('clients')">Clients</a>${sep}</span><span class="breadcrumb-current">${esc(_client.name)}</span>`;
+    na.innerHTML = `<button class="btn btn-primary btn-sm" onclick="route('new-project','${_clientId}')">+ New project</button>`;
+  } else if (_page === 'new-project') {
+    bc.innerHTML = `<span class="breadcrumb-item"><a onclick="route('clients')">Clients</a>${sep}</span><span class="breadcrumb-item"><a onclick="route('client','${_clientId}')">${esc(_client?.name||'Client')}</a>${sep}</span><span class="breadcrumb-current">New project</span>`;
+    na.innerHTML = '';
+  } else if (_page === 'project' && _project && _client) {
+    bc.innerHTML = `<span class="breadcrumb-item"><a onclick="route('clients')">Clients</a>${sep}</span><span class="breadcrumb-item"><a onclick="route('client','${_clientId}')">${esc(_client.name)}</a>${sep}</span><span class="breadcrumb-current">${esc(_project.name)}</span>`;
+    na.innerHTML = '';
+  }
+}
+
+// ── Clients list ──────────────────────────────────────────────────────────
+async function renderClients() {
+  const clients = await API.list('client');
+  const app = document.getElementById('app');
+
+  // Stats
+  const active   = clients.filter(c=>c.data?.status==='active').length;
+  const prospect = clients.filter(c=>c.data?.status==='prospect').length;
+
+  if (!clients.length) {
+    app.innerHTML = `
+      <div class="page-head"><div class="page-head-left"><h1>Client <span>manager</span></h1><p>Track your clients, projects, and interactions.</p></div></div>
+      <div class="card"><div class="empty"><div class="empty-icon">👥</div><p class="empty-text">No clients yet — add your first one.</p><button class="btn btn-primary" onclick="route('new-client')">+ New client</button></div></div>`;
+    return;
+  }
+
+  app.innerHTML = `
+    <div class="page-head"><div class="page-head-left"><h1>Client <span>manager</span></h1><p>${clients.length} client${clients.length!==1?'s':''}</p></div></div>
+    <div class="stat-strip">
+      <div class="stat-card"><div class="stat-num">${clients.length}</div><div class="stat-label">Total</div></div>
+      <div class="stat-card"><div class="stat-num">${active}</div><div class="stat-label">Active</div></div>
+      <div class="stat-card"><div class="stat-num">${prospect}</div><div class="stat-label">Prospects</div></div>
+    </div>
+    <div class="client-grid" id="client-grid">
+      ${clients.map(c => {
+        const color = c.data?.color || avatarColor(c.name);
+        return `
+          <div class="card client-card" data-cid="${c.id}" style="border-left-color:${color}">
+            <div class="client-card-top">
+              <div style="display:flex;align-items:center;gap:0.6rem">
+                <div class="client-avatar" style="background:${color}">${initials(c.name)}</div>
+                <div>
+                  <div class="client-name">${esc(c.name)}</div>
+                  <div class="client-company">${esc(c.data?.company||'')}</div>
+                </div>
+              </div>
+              <span class="badge badge-${c.data?.status||'active'}">${c.data?.status||'active'}</span>
+            </div>
+            ${c.data?.email ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem">✉ ${esc(c.data.email)}</div>` : ''}
+            ${c.data?.phone ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:0.2rem">📞 ${esc(c.data.phone)}</div>` : ''}
+            <div class="client-meta"><span>Added ${fmtDate(c.data?.created)}</span><span style="color:var(--amber-dk);font-weight:600">View →</span></div>
+          </div>`;
+      }).join('')}
+    </div>`;
+
+  document.getElementById('client-grid').addEventListener('click', e => {
+    const card = e.target.closest('[data-cid]');
+    if (card) route('client', card.dataset.cid);
+  });
+}
+
+// ── Client detail ─────────────────────────────────────────────────────────
+async function renderClient() {
+  const clients = await API.list('client');
+  _client = clients.find(c=>c.id===_clientId);
+  if (!_client) { route('clients'); return; }
+  setBreadcrumb();
+
+  const clientRels  = await API.getRels(_clientId);
+  const allProjects = await API.list('proj');
+  const projects    = clientRels.map(r=>({rel:r, proj:allProjects.find(p=>p.id===r.to_id)})).filter(x=>x.proj&&r_isProject(x.rel));
+  const color       = _client.data?.color || avatarColor(_client.name);
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-avatar" style="background:${color}">${initials(_client.name)}</div>
+      <div>
+        <div class="detail-name">${esc(_client.name)}</div>
+        <div class="detail-sub">${esc(_client.data?.company||'')}</div>
+        <div class="detail-fields">
+          ${_client.data?.email ? `<div class="detail-field"><div class="detail-field-label">Email</div><div class="detail-field-value">${esc(_client.data.email)}</div></div>` : ''}
+          ${_client.data?.phone ? `<div class="detail-field"><div class="detail-field-label">Phone</div><div class="detail-field-value">${esc(_client.data.phone)}</div></div>` : ''}
+          <div class="detail-field"><div class="detail-field-label">Status</div><div class="detail-field-value"><span class="badge badge-${_client.data?.status||'active'}">${_client.data?.status||'active'}</span></div></div>
+        </div>
+      </div>
+      <div class="detail-actions">
+        <button class="btn btn-danger btn-sm" id="del-client-btn">Delete</button>
+      </div>
+    </div>
+
+    <div class="section-head"><span class="section-label">Projects (${projects.length})</span></div>
+    <div class="card" style="margin-bottom:1.5rem">
+      ${projects.length ? `<div class="project-list">${projects.map(({proj,rel}) => {
+        const pc = proj.data?.color||'#D97706';
+        return `<div class="project-row" data-pid="${proj.id}" data-rid="${rel.id}">
+          <div class="project-dot" style="background:${pc}"></div>
+          <div class="project-row-name">${esc(proj.name)}</div>
+          <span class="badge badge-${proj.data?.status||'open'}">${proj.data?.status||'open'}</span>
+          <span class="project-row-chevron">›</span>
+        </div>`;
+      }).join('')}</div>` :
+      `<div class="empty" style="padding:2rem"><div class="empty-icon">📁</div><p class="empty-text">No projects yet.</p></div>`}
+    </div>`;
+
+  document.getElementById('del-client-btn').addEventListener('click', async () => {
+    if (!confirm(`Delete ${_client.name} and all their projects?`)) return;
+    for (const {proj,rel} of projects) {
+      const pRels = await API.getRels(proj.id);
+      for (const pr of pRels) { await API.del(pr.to_id); await API.delRel(pr.id); }
+      await API.del(proj.id); await API.delRel(rel.id);
+    }
+    await API.del(_clientId);
+    route('clients');
+  });
+
+  app.querySelector('.project-list')?.addEventListener('click', e => {
+    const row = e.target.closest('[data-pid]');
+    if (row) route('project', _clientId, row.dataset.pid);
+  });
+}
+
+function r_isProject(rel) { return rel.relation === 'has_project'; }
+function r_isNote(rel)    { return rel.relation === 'has_note'; }
+
+// ── Project detail ────────────────────────────────────────────────────────
+async function renderProject() {
+  const [clients, projects] = await Promise.all([API.list('client'), API.list('proj')]);
+  _client  = clients.find(c=>c.id===_clientId);
+  _project = projects.find(p=>p.id===_projectId);
+  if (!_project) { route('client',_clientId); return; }
+  setBreadcrumb();
+
+  const projRels = await API.getRels(_projectId);
+  const allNotes = await API.list('note');
+  const notes    = projRels.filter(r_isNote).map(r=>({rel:r,note:allNotes.find(n=>n.id===r.to_id)})).filter(x=>x.note).sort((a,b)=>(b.note.data?.ts||0)-(a.note.data?.ts||0));
+  const pc       = _project.data?.color||'#D97706';
+
+  const NOTE_TYPES = ['note','call','email','meeting'];
+  let activeType = 'note';
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-avatar" style="background:${pc};border-radius:10px;font-size:1.1rem">📁</div>
+      <div>
+        <div class="detail-name">${esc(_project.name)}</div>
+        <div class="detail-sub">${esc(_project.data?.description||'')}</div>
+        <div class="detail-fields">
+          <div class="detail-field"><div class="detail-field-label">Status</div><div class="detail-field-value"><span class="badge badge-${_project.data?.status||'open'}">${_project.data?.status||'open'}</span></div></div>
+          <div class="detail-field"><div class="detail-field-label">Client</div><div class="detail-field-value">${esc(_client?.name||'')}</div></div>
+          <div class="detail-field"><div class="detail-field-label">Started</div><div class="detail-field-value">${fmtDate(_project.data?.created)}</div></div>
+        </div>
+      </div>
+      <div class="detail-actions">
+        <select class="form-select" id="status-sel" style="font-size:0.8rem;padding:0.35rem 0.7rem;width:auto">
+          ${['open','complete','paused'].map(s=>`<option value="${s}"${_project.data?.status===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+        <button class="btn btn-danger btn-sm" id="del-proj-btn">Delete</button>
+      </div>
+    </div>
+
+    <div class="section-head" style="margin-bottom:0.6rem"><span class="section-label">Interaction log (${notes.length})</span></div>
+
+    <div class="add-note-card">
+      <div class="add-note-head" id="type-tabs">
+        ${NOTE_TYPES.map(t=>`<button class="note-type-btn ${t==='note'?'active':''}" data-type="${t}">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join('')}
+      </div>
+      <textarea class="add-note-textarea" id="note-body" placeholder="Add a note, log a call or meeting…"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:0.5rem">
+        <button class="btn btn-primary btn-sm" id="add-note-btn">Save entry</button>
+      </div>
+    </div>
+
+    <div class="note-list" id="note-list">
+      ${notes.length ? notes.map(({note,rel}) => `
+        <div class="note-item">
+          <div class="note-item-head">
+            <span class="note-type-badge note-${note.data?.type||'note'}">${note.data?.type||'note'}</span>
+            <div style="display:flex;align-items:center;gap:0.5rem">
+              <span class="note-date">${fmtDate(note.data?.ts)}</span>
+              <button class="note-del" data-nid="${note.id}" data-rid="${rel.id}">×</button>
+            </div>
+          </div>
+          <div class="note-body">${esc(note.data?.body||'')}</div>
+        </div>`).join('') :
+        `<div class="empty" style="padding:2rem"><div class="empty-icon">💬</div><p class="empty-text">No entries yet — log a call, email, or note above.</p></div>`}
+    </div>`;
+
+  // Type tabs
+  document.getElementById('type-tabs').addEventListener('click', e => {
+    const btn = e.target.closest('[data-type]');
+    if (!btn) return;
+    activeType = btn.dataset.type;
+    document.querySelectorAll('.note-type-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+
+  // Add note
+  document.getElementById('add-note-btn').addEventListener('click', async () => {
+    const body = document.getElementById('note-body').value.trim();
+    if (!body) return;
+    const note = await API.save(null,'note',body,{body,type:activeType,ts:Date.now()});
+    await API.addRel(_projectId, note.id, 'has_note');
+    document.getElementById('note-body').value = '';
+    await renderProject();
+  });
+
+  document.getElementById('note-body').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey||e.ctrlKey)) document.getElementById('add-note-btn').click();
+  });
+
+  // Delete note
+  document.getElementById('note-list').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-nid]');
+    if (!btn) return;
+    await API.del(btn.dataset.nid); await API.delRel(btn.dataset.rid);
+    await renderProject();
+  });
+
+  // Status change
+  document.getElementById('status-sel').addEventListener('change', async e => {
+    _project.data = {...(_project.data||{}), status: e.target.value};
+    await API.save(_projectId,'proj',_project.name,_project.data);
+  });
+
+  // Delete project
+  document.getElementById('del-proj-btn').addEventListener('click', async () => {
+    if (!confirm(`Delete project "${_project.name}"?`)) return;
+    for (const {rel} of notes) await API.delRel(rel.id);
+    const allNoteIds = projRels.filter(r_isNote).map(r=>r.to_id);
+    for (const id of allNoteIds) await API.del(id);
+    const clientRels = await API.getRels(_clientId);
+    const linkRel = clientRels.find(r=>r.to_id===_projectId);
+    if (linkRel) await API.delRel(linkRel.id);
+    await API.del(_projectId);
+    route('client',_clientId);
+  });
+}
+
+// ── New client form ───────────────────────────────────────────────────────
+function renderNewClient() {
+  let chosenColor = COLORS[0];
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="page-head"><div class="page-head-left"><h1>New <span>client</span></h1></div></div>
+    <div class="card" style="padding:1.75rem">
+      <div class="form-wrap">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Full name *</label><input class="form-input" id="nc-name" placeholder="Jane Smith" maxlength="80"></div>
+          <div class="form-group"><label class="form-label">Company</label><input class="form-input" id="nc-company" placeholder="Acme Pty Ltd" maxlength="80"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="nc-email" type="email" placeholder="jane@acme.com"></div>
+          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="nc-phone" type="tel" placeholder="+61 400 000 000"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="nc-status">
+            <option value="active">Active</option>
+            <option value="prospect">Prospect</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Colour</label>
+          <div class="color-picker" id="nc-colors"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="nc-notes" placeholder="Anything useful to know about this client…"></textarea></div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="save-client-btn">Create client</button>
+          <button class="btn btn-ghost" onclick="route('clients')">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+
+  const cp = document.getElementById('nc-colors');
+  COLORS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'cp-dot' + (c===chosenColor?' sel':'');
+    d.style.background = c;
+    d.addEventListener('click', () => { chosenColor=c; cp.querySelectorAll('.cp-dot').forEach(x=>x.classList.remove('sel')); d.classList.add('sel'); });
+    cp.appendChild(d);
+  });
+
+  document.getElementById('save-client-btn').addEventListener('click', async () => {
+    const name = document.getElementById('nc-name').value.trim();
+    if (!name) { document.getElementById('nc-name').focus(); return; }
+    await API.save(null,'client',name,{
+      company: document.getElementById('nc-company').value.trim(),
+      email:   document.getElementById('nc-email').value.trim(),
+      phone:   document.getElementById('nc-phone').value.trim(),
+      status:  document.getElementById('nc-status').value,
+      notes:   document.getElementById('nc-notes').value.trim(),
+      color:   chosenColor,
+      created: Date.now()
+    });
+    route('clients');
+  });
+}
+
+// ── New project form ──────────────────────────────────────────────────────
+function renderNewProject() {
+  let chosenColor = '#D97706';
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="page-head"><div class="page-head-left"><h1>New <span>project</span></h1><p>For ${esc(_client?.name||'client')}</p></div></div>
+    <div class="card" style="padding:1.75rem">
+      <div class="form-wrap">
+        <div class="form-group"><label class="form-label">Project name *</label><input class="form-input" id="np-name" placeholder="e.g. Website redesign" maxlength="80"></div>
+        <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="np-desc" placeholder="What does this project involve?"></textarea></div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="np-status">
+              <option value="open">Open</option>
+              <option value="complete">Complete</option>
+              <option value="paused">Paused</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Colour</label>
+            <div class="color-picker" id="np-colors"></div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" id="save-proj-btn">Create project</button>
+          <button class="btn btn-ghost" onclick="route('client','${_clientId}')">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+
+  const cp = document.getElementById('np-colors');
+  COLORS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'cp-dot' + (c===chosenColor?' sel':'');
+    d.style.background = c;
+    d.addEventListener('click', () => { chosenColor=c; cp.querySelectorAll('.cp-dot').forEach(x=>x.classList.remove('sel')); d.classList.add('sel'); });
+    cp.appendChild(d);
+  });
+
+  document.getElementById('save-proj-btn').addEventListener('click', async () => {
+    const name = document.getElementById('np-name').value.trim();
+    if (!name) { document.getElementById('np-name').focus(); return; }
+    const proj = await API.save(null,'proj',name,{
+      description: document.getElementById('np-desc').value.trim(),
+      status:      document.getElementById('np-status').value,
+      color:       chosenColor,
+      created:     Date.now()
+    });
+    await API.addRel(_clientId, proj.id, 'has_project');
+    route('client',_clientId);
+  });
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+route('clients');
+</script>
+</body>
+</html>

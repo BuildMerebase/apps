@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F8F6F3; --surface: #FFFFFF; --border: #E8E3DD;
+    --ink: #1C1A18; --muted: #7A7068; --subtle: #B8B0A6;
+    --amber: #D97706; --amber-dk: #B45309; --amber-bg: rgba(217,119,6,0.08);
+    --red: #DC2626; --red-bg: rgba(220,38,38,0.06);
+    --r: 8px; --shadow: 0 1px 3px rgba(28,26,24,0.06), 0 8px 24px rgba(28,26,24,0.04);
+  }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .topbar h1 { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; flex: 1; }
+  .topbar h1 span { color: var(--amber); }
+  .btn { padding: 0.6rem 1rem; border-radius: var(--r); border: none; font-size: 0.82rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-primary { background: var(--amber); color: #fff; }
+  .btn-primary:hover { background: var(--amber-dk); }
+  .btn-ghost { background: none; border: 1.5px solid var(--border); color: var(--muted); }
+  .btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+
+  .layout { display: grid; grid-template-columns: 260px 1fr; flex: 1; overflow: hidden; }
+  @media (max-width: 600px) { .layout { grid-template-columns: 1fr; } .editor-pane { display: none; } .layout.editing .sidebar { display: none; } .layout.editing .editor-pane { display: flex; } }
+
+  /* Sidebar */
+  .sidebar { border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; background: var(--bg); }
+  .sidebar-empty { padding: 3rem 1rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
+  .note-item { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; position: relative; }
+  .note-item:hover { background: var(--surface); }
+  .note-item.active { background: var(--amber-bg); border-left: 3px solid var(--amber); padding-left: calc(1rem - 3px); }
+  .note-item-title { font-size: 0.875rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.2rem; }
+  .note-item-preview { font-size: 0.75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .note-item-date { font-size: 0.68rem; color: var(--subtle); margin-top: 0.3rem; }
+  .note-del-btn { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--subtle); font-size: 1rem; cursor: pointer; padding: 0.25rem; border-radius: 4px; opacity: 0; transition: opacity 0.15s; }
+  .note-item:hover .note-del-btn { opacity: 1; }
+  .note-del-btn:hover { background: var(--red-bg); color: var(--red); }
+
+  /* Editor */
+  .editor-pane { display: flex; flex-direction: column; overflow: hidden; }
+  .editor-toolbar { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+  .title-input { flex: 1; font-size: 1rem; font-weight: 700; font-family: inherit; border: none; background: none; outline: none; color: var(--ink); }
+  .title-input::placeholder { color: var(--subtle); }
+  .save-status { font-size: 0.72rem; color: var(--subtle); white-space: nowrap; }
+  .save-status.saving { color: var(--amber-dk); }
+  .save-status.saved { color: var(--muted); }
+  .body-input { flex: 1; padding: 1.5rem; font-size: 0.95rem; font-family: inherit; border: none; outline: none; resize: none; color: var(--ink); line-height: 1.7; background: var(--surface); }
+  .body-input::placeholder { color: var(--subtle); }
+
+  .no-note { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted); gap: 0.5rem; }
+  .no-note-icon { font-size: 2rem; }
+  .no-note-text { font-size: 0.875rem; }
+
+  .loading { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.875rem; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>Quick <span>notes</span></h1>
+  <button class="btn btn-primary" id="new-btn">+ New note</button>
+</div>
+
+<div class="layout" id="layout">
+  <div class="sidebar" id="sidebar"><div class="loading">Loading…</div></div>
+  <div class="editor-pane" id="editor-pane">
+    <div class="no-note" id="no-note">
+      <div class="no-note-icon">📝</div>
+      <div class="no-note-text">Select a note or create one</div>
+    </div>
+    <div id="editor" style="display:none;flex-direction:column;height:100%;overflow:hidden;display:none">
+      <div class="editor-toolbar">
+        <input class="title-input" id="title-input" placeholder="Note title…" maxlength="100">
+        <span class="save-status" id="save-status">—</span>
+        <button class="btn btn-ghost" id="back-btn" style="display:none">← Back</button>
+      </div>
+      <textarea class="body-input" id="body-input" placeholder="Start writing…"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+// Entity API wrapper
+const MOCK_ENTITIES = [];
+let mockId = 1;
+const ENTITY = window.MB ? {
+  async list() {
+    const r = await fetch(`${MB.api}/entities?type=note&app_id=${MB.app_id}`, {credentials:'include'});
+    const j = await r.json();
+    return (j.entities || []).sort((a,b) => (b.data?.updated||0) - (a.data?.updated||0));
+  },
+  async save(id, name, data) {
+    const body = {type:'note', name, data, app_id: MB.app_id};
+    if (id) body.id = id;
+    const r = await fetch(`${MB.api}/entities`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+    const j = await r.json();
+    return j.entity || j;
+  },
+  async del(id) {
+    await fetch(`${MB.api}/entities/delete`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({id})});
+  }
+} : {
+  async list() { return [...MOCK_ENTITIES].sort((a,b)=>(b.data?.updated||0)-(a.data?.updated||0)); },
+  async save(id, name, data) {
+    if (id) {
+      const e = MOCK_ENTITIES.find(x=>x.id===id);
+      if (e) { e.name = name; e.data = data; return e; }
+    }
+    const e = {id: String(mockId++), name, data, type:'note'};
+    MOCK_ENTITIES.push(e);
+    return e;
+  },
+  async del(id) {
+    const i = MOCK_ENTITIES.findIndex(x=>x.id===id);
+    if (i > -1) MOCK_ENTITIES.splice(i,1);
+  }
+};
+
+let notes = [], activeId = null, saveTimer = null;
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(ts) { if (!ts) return ''; return new Date(ts).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}); }
+
+async function load() {
+  notes = await ENTITY.list();
+  renderSidebar();
+}
+
+function renderSidebar() {
+  const sb = document.getElementById('sidebar');
+  if (!notes.length) { sb.innerHTML = '<div class="sidebar-empty">No notes yet.<br>Create your first one →</div>'; return; }
+  sb.innerHTML = notes.map(n => `
+    <div class="note-item ${n.id === activeId ? 'active' : ''}" data-id="${n.id}">
+      <div class="note-item-title">${esc(n.name || 'Untitled')}</div>
+      <div class="note-item-preview">${esc((n.data?.body || '').slice(0,60))}</div>
+      <div class="note-item-date">${fmtDate(n.data?.updated)}</div>
+      <button class="note-del-btn" data-del="${n.id}">×</button>
+    </div>`).join('');
+}
+
+function openNote(id) {
+  const n = notes.find(x => x.id === id);
+  if (!n) return;
+  activeId = id;
+  document.getElementById('no-note').style.display = 'none';
+  const ed = document.getElementById('editor');
+  ed.style.display = 'flex';
+  ed.style.flexDirection = 'column';
+  ed.style.height = '100%';
+  ed.style.overflow = 'hidden';
+  document.getElementById('title-input').value = n.name || '';
+  document.getElementById('body-input').value = n.data?.body || '';
+  document.getElementById('save-status').textContent = 'Saved';
+  document.getElementById('save-status').className = 'save-status saved';
+  renderSidebar();
+  if (window.innerWidth <= 600) document.getElementById('layout').classList.add('editing');
+}
+
+async function newNote() {
+  const saved = await ENTITY.save(null, 'Untitled', { body: '', updated: Date.now() });
+  notes.unshift(saved);
+  renderSidebar();
+  openNote(saved.id);
+}
+
+function scheduleSave() {
+  const status = document.getElementById('save-status');
+  status.textContent = 'Saving…';
+  status.className = 'save-status saving';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    if (!activeId) return;
+    const title = document.getElementById('title-input').value || 'Untitled';
+    const body  = document.getElementById('body-input').value;
+    const n = notes.find(x => x.id === activeId);
+    if (!n) return;
+    n.name = title; n.data = { body, updated: Date.now() };
+    await ENTITY.save(activeId, title, n.data);
+    notes = await ENTITY.list();
+    renderSidebar();
+    status.textContent = 'Saved';
+    status.className = 'save-status saved';
+  }, 800);
+}
+
+document.getElementById('sidebar').addEventListener('click', e => {
+  const item = e.target.closest('[data-id]');
+  const del  = e.target.closest('[data-del]');
+  if (del) { e.stopPropagation(); deleteNote(del.dataset.del); return; }
+  if (item) openNote(item.dataset.id);
+});
+
+async function deleteNote(id) {
+  if (!confirm('Delete this note?')) return;
+  await ENTITY.del(id);
+  notes = notes.filter(n => n.id !== id);
+  if (activeId === id) {
+    activeId = null;
+    document.getElementById('no-note').style.display = '';
+    document.getElementById('editor').style.display = 'none';
+  }
+  renderSidebar();
+}
+
+document.getElementById('new-btn').addEventListener('click', newNote);
+document.getElementById('title-input').addEventListener('input', scheduleSave);
+document.getElementById('body-input').addEventListener('input', scheduleSave);
+document.getElementById('back-btn')?.addEventListener('click', () => {
+  document.getElementById('layout').classList.remove('editing');
+});
+
+load();
+</script>
+</body>
+</html>

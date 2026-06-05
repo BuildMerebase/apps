@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>To-do</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F8F6F3; --surface: #FFFFFF; --border: #E8E3DD;
+    --ink: #1C1A18; --muted: #7A7068; --subtle: #B8B0A6;
+    --amber: #D97706; --amber-dk: #B45309; --amber-bg: rgba(217,119,6,0.08);
+    --green: #059669; --red: #DC2626;
+    --r: 8px; --shadow: 0 1px 3px rgba(28,26,24,0.06), 0 8px 24px rgba(28,26,24,0.04);
+  }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; padding: 2rem 1rem; }
+  .app { max-width: 540px; margin: 0 auto; }
+  header { margin-bottom: 2rem; }
+  h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; }
+  h1 span { color: var(--amber); }
+  .subtitle { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; }
+
+  .add-row { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .add-input { flex: 1; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 0.95rem; font-family: inherit; background: var(--surface); color: var(--ink); outline: none; transition: border-color 0.15s; }
+  .add-input:focus { border-color: var(--amber); }
+  .add-input::placeholder { color: var(--subtle); }
+  .btn { padding: 0.75rem 1.25rem; border-radius: var(--r); border: none; font-size: 0.875rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: background 0.15s, transform 0.1s; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--amber); color: #fff; }
+  .btn-primary:hover { background: var(--amber-dk); }
+  .btn-ghost { background: none; border: 1.5px solid var(--border); color: var(--muted); }
+  .btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+
+  .filters { display: flex; gap: 0.25rem; margin-bottom: 1rem; }
+  .filter-btn { padding: 0.35rem 0.85rem; border-radius: 100px; border: none; font-size: 0.78rem; font-weight: 600; font-family: inherit; cursor: pointer; background: none; color: var(--muted); transition: all 0.15s; }
+  .filter-btn.active { background: var(--amber-bg); color: var(--amber-dk); }
+  .filter-btn:hover:not(.active) { background: var(--bg); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+  .task { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1rem; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  .task:last-child { border-bottom: none; }
+  .task:hover { background: #FDFCFB; }
+  .task-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; background: none; }
+  .task-check:hover { border-color: var(--amber); }
+  .task.done .task-check { background: var(--green); border-color: var(--green); }
+  .task.done .task-check::after { content: ''; width: 5px; height: 9px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg) translate(-1px,-1px); display: block; }
+  .task-text { flex: 1; font-size: 0.925rem; line-height: 1.4; }
+  .task.done .task-text { color: var(--subtle); text-decoration: line-through; }
+  .task-del { background: none; border: none; cursor: pointer; padding: 0.25rem; color: var(--subtle); font-size: 1.1rem; line-height: 1; border-radius: 4px; opacity: 0; transition: all 0.15s; }
+  .task:hover .task-del { opacity: 1; }
+  .task-del:hover { background: #FEE2E2; color: var(--red); }
+
+  .empty { padding: 3rem 1rem; text-align: center; }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .empty-text { font-size: 0.9rem; color: var(--muted); }
+
+  footer { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; padding: 0 0.25rem; }
+  .count { font-size: 0.8rem; color: var(--muted); }
+  .btn-clear { font-size: 0.78rem; padding: 0.3rem 0.75rem; }
+
+  .loading { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.875rem; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>To&#8209;do <span>list</span></h1>
+    <p class="subtitle">Your tasks, stored and ready.</p>
+  </header>
+
+  <div class="add-row">
+    <input class="add-input" id="task-input" placeholder="What needs doing?" maxlength="200">
+    <button class="btn btn-primary" id="add-btn">Add</button>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="active">Active</button>
+    <button class="filter-btn" data-filter="done">Done</button>
+  </div>
+
+  <div class="card" id="list-wrap">
+    <div class="loading">Loading…</div>
+  </div>
+
+  <footer>
+    <span class="count" id="count"></span>
+    <button class="btn btn-ghost btn-clear" id="clear-btn" style="display:none">Clear completed</button>
+  </footer>
+</div>
+
+<script>
+const MOCK = { todos: [] };
+const DB = window.MB ? {
+  async get(k) { const {value} = await fetch(`${MB.api}/data?app_id=${MB.app_id}&key=${k}`,{credentials:'include'}).then(r=>r.json()); return value; },
+  async set(k,v) { await fetch(`${MB.api}/data`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({app_id:MB.app_id,key:k,value:v})}); }
+} : {
+  async get(k) { return MOCK[k] ?? null; },
+  async set(k,v) { MOCK[k] = v; }
+};
+
+let todos = [], filter = 'all';
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function today() { return new Date().toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}); }
+
+async function load() {
+  const saved = await DB.get('todos');
+  todos = Array.isArray(saved) ? saved : [];
+  render();
+}
+
+async function save() { await DB.set('todos', todos); }
+
+function render() {
+  const wrap = document.getElementById('list-wrap');
+  const visible = todos.filter(t => filter === 'all' ? true : filter === 'done' ? t.done : !t.done);
+  const done = todos.filter(t => t.done).length;
+  const active = todos.length - done;
+
+  document.getElementById('count').textContent = `${active} item${active !== 1 ? 's' : ''} left`;
+  const clearBtn = document.getElementById('clear-btn');
+  clearBtn.style.display = done > 0 ? '' : 'none';
+
+  if (!visible.length) {
+    const msgs = { all: ['📋','Nothing here yet — add your first task above.'], active: ['✅','All done!'], done: ['🗂️','No completed tasks yet.'] };
+    const [icon, text] = msgs[filter];
+    wrap.innerHTML = `<div class="empty"><div class="empty-icon">${icon}</div><p class="empty-text">${text}</p></div>`;
+    return;
+  }
+
+  wrap.innerHTML = visible.map(t => `
+    <div class="task ${t.done ? 'done' : ''}" data-id="${t.id}">
+      <button class="task-check" data-toggle="${t.id}" title="Toggle"></button>
+      <span class="task-text">${esc(t.text)}</span>
+      <button class="task-del" data-del="${t.id}" title="Delete">×</button>
+    </div>`).join('');
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function addTask() {
+  const input = document.getElementById('task-input');
+  const text = input.value.trim();
+  if (!text) return;
+  todos.unshift({ id: uid(), text, done: false, created: Date.now() });
+  input.value = '';
+  render();
+  await save();
+}
+
+document.getElementById('add-btn').addEventListener('click', addTask);
+document.getElementById('task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+
+document.getElementById('list-wrap').addEventListener('click', async e => {
+  const toggle = e.target.closest('[data-toggle]');
+  const del    = e.target.closest('[data-del]');
+  if (toggle) {
+    const id = toggle.dataset.toggle;
+    const t  = todos.find(x => x.id === id);
+    if (t) { t.done = !t.done; render(); await save(); }
+  }
+  if (del) {
+    const id = del.dataset.del;
+    todos = todos.filter(x => x.id !== id);
+    render();
+    await save();
+  }
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    filter = btn.dataset.filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+});
+
+document.getElementById('clear-btn').addEventListener('click', async () => {
+  todos = todos.filter(t => !t.done);
+  render();
+  await save();
+});
+
+load();
+</script>
+</body>
+</html>

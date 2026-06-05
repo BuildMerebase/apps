@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wiki</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F6F4F1;
+  --sidebar-bg: #EDEBE7;
+  --surface: #FFFFFF;
+  --border: #DDD9D4;
+  --ink: #1A1816;
+  --muted: #6A6460;
+  --subtle: #9E9890;
+  --accent: #7C3AED;
+  --accent-hover: #6D28D9;
+  --accent-bg: rgba(124,58,237,0.07);
+  --accent-border: rgba(124,58,237,0.25);
+  --amber: #D97706;
+  --red: #DC2626;
+  --red-bg: rgba(220,38,38,0.06);
+  --green: #059669;
+  --r: 8px;
+  --shadow: 0 1px 3px rgba(26,24,22,0.06), 0 8px 24px rgba(26,24,22,0.04);
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Topbar ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1.25rem;
+  height: 52px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 20;
+}
+.topbar-logo {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.topbar-logo-icon {
+  width: 26px;
+  height: 26px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.8rem;
+}
+.topbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.topbar-page-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.topbar-page-name.has-page { color: var(--ink); }
+.save-indicator {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--green);
+  opacity: 0;
+  transition: opacity 0.3s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.save-indicator.show { opacity: 1; }
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+  color: var(--muted);
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+.hamburger:hover { background: var(--bg); color: var(--ink); }
+.hamburger svg { display: block; }
+
+/* ── Layout ── */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.25s ease;
+}
+.sidebar-header {
+  padding: 0.75rem 0.875rem 0.5rem;
+  flex-shrink: 0;
+}
+.search-box {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.search-box:focus { border-color: var(--accent); }
+.search-box::placeholder { color: var(--subtle); }
+.sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+.sidebar-list::-webkit-scrollbar { width: 4px; }
+.sidebar-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.page-item {
+  display: flex;
+  align-items: center;
+  padding: 0 0.875rem;
+  height: 36px;
+  cursor: pointer;
+  position: relative;
+  border-left: 3px solid transparent;
+  transition: background 0.1s;
+  gap: 0.5rem;
+}
+.page-item:hover { background: rgba(26,24,22,0.04); }
+.page-item.active {
+  background: var(--accent-bg);
+  border-left-color: var(--accent);
+  padding-left: calc(0.875rem - 3px);
+}
+.page-item-name {
+  font-size: 0.825rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  color: var(--ink);
+}
+.page-item.active .page-item-name { font-weight: 600; color: var(--accent); }
+.page-del-btn {
+  background: none;
+  border: none;
+  color: var(--subtle);
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: opacity 0.15s, background 0.1s, color 0.1s;
+}
+.page-item:hover .page-del-btn { opacity: 1; }
+.page-del-btn:hover { background: var(--red-bg); color: var(--red); }
+.sidebar-loading {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.sidebar-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--subtle);
+  line-height: 1.5;
+}
+.sidebar-footer {
+  padding: 0.625rem 0.875rem;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.new-page-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.new-page-btn:hover { background: var(--accent-hover); }
+.new-page-form {
+  display: none;
+  gap: 0.4rem;
+}
+.new-page-form.show { display: flex; }
+.new-page-input {
+  flex: 1;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--r);
+  color: var(--ink);
+  outline: none;
+  min-width: 0;
+}
+.new-page-input::placeholder { color: var(--subtle); }
+.new-page-create-btn {
+  padding: 0.5rem 0.7rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.new-page-create-btn:hover { background: var(--accent-hover); }
+
+/* ── Sidebar overlay (mobile) ── */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(26,24,22,0.4);
+  z-index: 15;
+}
+
+/* ── Main pane ── */
+.main-pane {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* ── Toolbar ── */
+.view-toolbar, .edit-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  min-height: 48px;
+}
+.toolbar-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ink);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.toolbar-meta {
+  font-size: 0.72rem;
+  color: var(--subtle);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn {
+  padding: 0.45rem 0.875rem;
+  border-radius: var(--r);
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-accent { background: var(--accent); color: #fff; }
+.btn-accent:hover { background: var(--accent-hover); }
+.btn-ghost {
+  background: none;
+  border: 1.5px solid var(--border);
+  color: var(--muted);
+}
+.btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+.btn-danger {
+  background: none;
+  border: 1.5px solid transparent;
+  color: var(--red);
+}
+.btn-danger:hover { background: var(--red-bg); border-color: rgba(220,38,38,0.25); }
+.edit-title-input {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--ink);
+  min-width: 0;
+}
+.edit-title-input::placeholder { color: var(--subtle); }
+
+/* ── Empty / loading states ── */
+.no-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.75rem;
+  color: var(--muted);
+  padding: 2rem;
+  text-align: center;
+}
+.no-page-icon {
+  font-size: 2.5rem;
+  opacity: 0.5;
+}
+.no-page-text { font-size: 0.875rem; }
+.no-page-hint { font-size: 0.78rem; color: var(--subtle); }
+
+/* ── View area ── */
+.view-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2.5rem;
+}
+.view-area::-webkit-scrollbar { width: 6px; }
+.view-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.view-content {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* Rendered markdown styles */
+.view-content h1 { font-size: 2rem; font-weight: 800; line-height: 1.15; letter-spacing: -0.03em; margin: 0 0 1rem; color: var(--ink); }
+.view-content h2 { font-size: 1.4rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; margin: 2rem 0 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--ink); }
+.view-content h3 { font-size: 1.1rem; font-weight: 700; line-height: 1.3; margin: 1.5rem 0 0.5rem; color: var(--ink); }
+.view-content h4 { font-size: 0.95rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin: 1.25rem 0 0.5rem; color: var(--muted); }
+.view-content p { font-size: 0.95rem; line-height: 1.75; color: var(--ink); margin: 0 0 1rem; }
+.view-content ul, .view-content ol { font-size: 0.95rem; line-height: 1.75; padding-left: 1.5rem; margin: 0 0 1rem; }
+.view-content li { margin-bottom: 0.25rem; }
+.view-content li p { margin: 0; }
+.view-content strong { font-weight: 700; color: var(--ink); }
+.view-content em { font-style: italic; }
+.view-content del { text-decoration: line-through; color: var(--subtle); }
+.view-content a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-border); transition: border-color 0.15s; }
+.view-content a:hover { border-bottom-color: var(--accent); }
+.view-content code {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  background: rgba(124,58,237,0.08);
+  color: var(--accent-hover);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  border: 1px solid var(--accent-border);
+}
+.view-content pre {
+  background: #1E1C1A;
+  color: #E8E3DD;
+  border-radius: var(--r);
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin: 0 0 1.25rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.view-content pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  border: none;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+.view-content blockquote {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-bg);
+  margin: 0 0 1rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0 var(--r) var(--r) 0;
+}
+.view-content blockquote p { color: var(--muted); font-style: italic; margin: 0; font-size: 0.93rem; }
+.view-content hr {
+  border: none;
+  border-top: 2px solid var(--border);
+  margin: 2rem 0;
+}
+.view-content table { width: 100%; border-collapse: collapse; margin: 0 0 1rem; font-size: 0.875rem; }
+.view-content th { text-align: left; font-weight: 700; padding: 0.5rem 0.75rem; border-bottom: 2px solid var(--border); color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.view-content td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+.view-content tr:last-child td { border-bottom: none; }
+.view-content tr:hover td { background: var(--accent-bg); }
+
+/* ── Edit area ── */
+.edit-area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  gap: 1rem;
+}
+.edit-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 400px;
+  padding: 1.25rem;
+  font-size: 0.9rem;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  line-height: 1.7;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+.edit-textarea:focus { border-color: var(--accent); }
+.edit-textarea::placeholder { color: var(--subtle); }
+
+/* ── Confirm dialog ── */
+.confirm-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(26,24,22,0.5);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.confirm-overlay.show { display: flex; }
+.confirm-box {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 8px 40px rgba(26,24,22,0.2);
+  max-width: 360px;
+  width: 100%;
+}
+.confirm-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.confirm-msg {
+  font-size: 0.875rem;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+.confirm-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+/* ── Mobile ── */
+@media (max-width: 480px) {
+  .hamburger { display: flex; }
+  .sidebar {
+    position: fixed;
+    top: 52px;
+    left: 0;
+    bottom: 0;
+    z-index: 16;
+    transform: translateX(-100%);
+    width: 280px;
+    box-shadow: 4px 0 20px rgba(26,24,22,0.12);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay.show { display: block; }
+  .view-toolbar, .edit-toolbar { padding: 0.625rem 1rem; }
+  .view-area { padding: 1.5rem 1rem; }
+  .toolbar-meta { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+  <button class="hamburger" id="hamburger-btn" aria-label="Toggle sidebar">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <line x1="2" y1="4.5" x2="16" y2="4.5"/><line x1="2" y1="9" x2="16" y2="9"/><line x1="2" y1="13.5" x2="16" y2="13.5"/>
+    </svg>
+  </button>
+  <a class="topbar-logo" href="#">
+    <div class="topbar-logo-icon">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2h4v4H2V2zm6 0h4v4H8V2zm0 6h4v4H8V8zM2 9h2v2H2V9zm2 0h2v2H4V9z" fill="currentColor"/></svg>
+    </div>
+    wiki
+  </a>
+  <div class="topbar-divider"></div>
+  <div class="topbar-page-name" id="topbar-page-name">Select a page</div>
+  <div class="save-indicator" id="save-indicator">Saved ✓</div>
+</header>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <input class="search-box" id="search-box" type="search" placeholder="Search pages…" autocomplete="off">
+    </div>
+    <div class="sidebar-list" id="sidebar-list">
+      <div class="sidebar-loading">Loading…</div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="new-page-btn" id="new-page-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
+        </svg>
+        New page
+      </button>
+      <div class="new-page-form" id="new-page-form">
+        <input class="new-page-input" id="new-page-input" type="text" placeholder="Page title…" maxlength="100" autocomplete="off">
+        <button class="new-page-create-btn" id="new-page-create-btn">Create</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main pane -->
+  <main class="main-pane" id="main-pane">
+
+    <!-- No-page state -->
+    <div class="no-page" id="no-page">
+      <div class="no-page-icon">📖</div>
+      <div class="no-page-text">No page selected</div>
+      <div class="no-page-hint">Pick a page from the sidebar or create a new one</div>
+    </div>
+
+    <!-- View mode -->
+    <div id="view-mode" style="display:none;flex-direction:column;height:100%;overflow:hidden;">
+      <div class="view-toolbar">
+        <div class="toolbar-title" id="view-title"></div>
+        <div class="toolbar-meta" id="view-meta"></div>
+        <button class="btn btn-accent" id="edit-btn">Edit</button>
+        <button class="btn btn-danger" id="view-delete-btn">Delete</button>
+      </div>
+      <div class="view-area">
+        <div class="view-content" id="view-content"></div>
+      </div>
+    </div>
+
+    <!-- Edit mode -->
+    <div id="edit-mode" style="display:none;flex-direction:column;height:100%;overflow:hidden;">
+      <div class="edit-toolbar">
+        <input class="edit-title-input" id="edit-title-input" placeholder="Page title…" maxlength="100">
+        <button class="btn btn-ghost" id="cancel-btn">Cancel</button>
+        <button class="btn btn-accent" id="save-btn">Save</button>
+      </div>
+      <div class="edit-area">
+        <textarea class="edit-textarea" id="edit-textarea" placeholder="Write markdown here…" spellcheck="true"></textarea>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Confirm dialog -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirm-title">Delete page?</div>
+    <div class="confirm-msg" id="confirm-msg">This cannot be undone.</div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" id="confirm-cancel-btn">Cancel</button>
+      <button class="btn" id="confirm-ok-btn" style="background:var(--red);color:#fff;">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Mock data ──────────────────────────────────────────────────────────────
+const MOCK = {
+  pages: [
+    {
+      id: 'p1',
+      name: 'Home',
+      data: {
+        body: `# Welcome to the Wiki\n\nThis is your team's growing knowledge base. Create pages, write in markdown, and keep everything organised.\n\n## Markdown Cheatsheet\n\n### Text formatting\n\n**Bold text** is wrapped in double asterisks. *Italic* uses single asterisks. ~~Strikethrough~~ uses double tildes. Inline \`code\` uses backticks.\n\n### Headings\n\n\`\`\`\n# Heading 1\n## Heading 2\n### Heading 3\n#### Heading 4\n\`\`\`\n\n### Lists\n\nUnordered:\n- Item one\n- Item two\n- Item three\n\nOrdered:\n1. First step\n2. Second step\n3. Third step\n\n### Links\n\n[Link text](https://example.com)\n\n### Blockquote\n\n> This is a blockquote. Use it for important callouts, quotes, or notes.\n\n### Code block\n\n\`\`\`\nconst greeting = "Hello, world!";\nconsole.log(greeting);\n\`\`\`\n\n### Horizontal rule\n\n---\n\nHappy writing! 🎉`,
+        updated: Date.now() - 86400000 * 2
+      }
+    },
+    {
+      id: 'p2',
+      name: 'Product roadmap',
+      data: {
+        body: `# Product Roadmap\n\n> This document outlines our planned features and initiatives for the coming quarters. Updated monthly.\n\n## Q1 — Foundation\n\n- ~~Redesign onboarding flow~~ ✓\n- ~~Launch core API v2~~ ✓\n- ~~Set up analytics pipeline~~ ✓\n- Mobile responsive layout\n\n## Q2 — Growth\n\n- **Team workspaces** — multi-user support with roles\n- **Integrations hub** — Slack, Notion, GitHub connectors\n- Public sharing links\n- Usage dashboard for admins\n\n## Q3 — Scale\n\n- Enterprise SSO (SAML / OIDC)\n- Audit log and compliance exports\n- Custom domains\n- SLA-backed uptime guarantees\n\n## Q4 — Polish\n\n- Native mobile apps (iOS & Android)\n- Offline mode with sync\n- Advanced search with filters\n- AI-assisted writing tools\n\n---\n\n## How we prioritise\n\n1. Customer impact — does it unblock real users?\n2. Strategic fit — does it advance our core mission?\n3. Effort vs value — is this the highest-leverage use of the team?\n\n## Status legend\n\n- ~~Done~~ — shipped\n- **Bold** — in progress\n- Plain — planned`,
+        updated: Date.now() - 86400000 * 5
+      }
+    },
+    {
+      id: 'p3',
+      name: 'Team handbook',
+      data: {
+        body: `# Team Handbook\n\nWelcome to the team! This handbook covers the essentials for how we work together.\n\n## Our principles\n\n1. **Default to async** — not everything needs a meeting\n2. **Write it down** — if it's worth saying, it's worth documenting\n3. **Trust and verify** — we trust each other, and we also ship tests\n4. **Ship small** — smaller PRs get reviewed faster and break less\n5. **Be kind** — we're all figuring this out together\n\n## Communication\n\n### Slack channels\n\n- **#general** — announcements, team-wide updates\n- **#eng** — engineering discussion\n- **#design** — design work and reviews\n- **#random** — off-topic, memes, weekend plans\n\n### Meetings\n\n- Daily standup: 9:30 AM, 15 minutes, async-first\n- Sprint planning: every two weeks, Monday\n- Retrospective: every two weeks, Friday\n- All-hands: monthly, first Tuesday\n\n## Code review guidelines\n\n> Good code review is about the code, not the person.\n\n- Aim to review within **one business day**\n- Approve if it's good enough to ship — perfect is the enemy of done\n- Leave kind, specific comments\n- Use \`nit:\` prefix for non-blocking style notes\n\n## Time off\n\nWe operate a flexible PTO policy. Notify your manager at least:\n- **1 week** in advance for 1–3 days off\n- **2 weeks** in advance for longer breaks\n\nBlock your calendar and set an out-of-office reply.\n\n---\n\n*Last updated by the People team. Questions? Post in #general.*`,
+        updated: Date.now() - 86400000 * 12
+      }
+    }
+  ]
+};
+
+// ── DB layer ───────────────────────────────────────────────────────────────
+const DB = window.MB ? {
+  async list() {
+    const r = await fetch(`${MB.api}/entities?app_id=${MB.app_id}&type=wiki_page`, {credentials:'include'});
+    const {entities} = await r.json();
+    return entities || [];
+  },
+  async save(id, title, body) {
+    const r = await fetch(`${MB.api}/entities`, {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({app_id:MB.app_id, type:'wiki_page', name:title, data:{body, updated:Date.now()}, id: id||undefined})
+    });
+    const d = await r.json();
+    return d.entity || d;
+  },
+  async del(id) {
+    await fetch(`${MB.api}/entities/delete`, {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id})
+    });
+  }
+} : {
+  async list() { return MOCK.pages; },
+  async save(id, title, body) {
+    const e = {id: id||'p'+Date.now(), name:title, data:{body, updated:Date.now()}};
+    const idx = MOCK.pages.findIndex(p=>p.id===id);
+    if (idx>=0) MOCK.pages[idx]=e; else MOCK.pages.push(e);
+    return e;
+  },
+  async del(id) { MOCK.pages = MOCK.pages.filter(p=>p.id!==id); }
+};
+
+// ── Markdown parser ────────────────────────────────────────────────────────
+function parseMarkdown(md) {
+  if (!md) return '';
+
+  // Escape HTML helper
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // First pass: extract code blocks
+  const blocks = [];
+  md = md.replace(/```([\s\S]*?)```/g, (_, code) => {
+    const idx = blocks.length;
+    blocks.push(`<pre><code>${esc(code.replace(/^\n/,'').replace(/\n$/,''))}</code></pre>`);
+    return `\x00BLOCK${idx}\x00`;
+  });
+
+  // Split into lines
+  const lines = md.split('\n');
+  const out = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Restore code block
+    if (/^\x00BLOCK\d+\x00$/.test(line.trim())) {
+      const idx = parseInt(line.match(/\x00BLOCK(\d+)\x00/)[1]);
+      out.push(blocks[idx]);
+      i++;
+      continue;
+    }
+
+    // Headings
+    const h = line.match(/^(#{1,4})\s+(.*)/);
+    if (h) {
+      const level = h[1].length;
+      out.push(`<h${level}>${inlineFormat(h[2])}</h${level}>`);
+      i++;
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^---+$/.test(line.trim())) {
+      out.push('<hr>');
+      i++;
+      continue;
+    }
+
+    // Blockquote
+    if (line.startsWith('> ')) {
+      const bqLines = [];
+      while (i < lines.length && lines[i].startsWith('> ')) {
+        bqLines.push(lines[i].slice(2));
+        i++;
+      }
+      out.push(`<blockquote><p>${bqLines.map(inlineFormat).join('<br>')}</p></blockquote>`);
+      continue;
+    }
+
+    // Unordered list
+    if (/^[-*+]\s/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^[-*+]\s/.test(lines[i])) {
+        items.push(`<li>${inlineFormat(lines[i].replace(/^[-*+]\s/,''))}</li>`);
+        i++;
+      }
+      out.push(`<ul>${items.join('')}</ul>`);
+      continue;
+    }
+
+    // Ordered list
+    if (/^\d+\.\s/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        items.push(`<li>${inlineFormat(lines[i].replace(/^\d+\.\s/,''))}</li>`);
+        i++;
+      }
+      out.push(`<ol>${items.join('')}</ol>`);
+      continue;
+    }
+
+    // Empty line
+    if (line.trim() === '') {
+      i++;
+      continue;
+    }
+
+    // Paragraph — collect until blank line or block element
+    const paraLines = [];
+    while (
+      i < lines.length &&
+      lines[i].trim() !== '' &&
+      !/^(#{1,4}\s|>\s|[-*+]\s|\d+\.\s|---+$|\x00BLOCK)/.test(lines[i])
+    ) {
+      paraLines.push(lines[i]);
+      i++;
+    }
+    if (paraLines.length) {
+      out.push(`<p>${paraLines.map(inlineFormat).join('<br>')}</p>`);
+    }
+  }
+
+  return out.join('\n');
+}
+
+function inlineFormat(text) {
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Inline code first (no further formatting inside)
+  const codeSlots = [];
+  text = text.replace(/`([^`]+)`/g, (_, code) => {
+    const i = codeSlots.length;
+    codeSlots.push(`<code>${esc(code)}</code>`);
+    return `\x01CODE${i}\x01`;
+  });
+  // Links
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, t, u) =>
+    `<a href="${u}" target="_blank" rel="noopener">${esc(t)}</a>`
+  );
+  // Bold+italic
+  text = text.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+  // Bold
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // Strikethrough
+  text = text.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+  // Restore code
+  text = text.replace(/\x01CODE(\d+)\x01/g, (_, i) => codeSlots[parseInt(i)]);
+  return text;
+}
+
+// ── State ──────────────────────────────────────────────────────────────────
+let pages = [];       // all pages from DB
+let currentId = null; // currently open page id
+let mode = 'none';    // 'none' | 'view' | 'edit'
+let searchQuery = '';
+let confirmCallback = null;
+
+// ── DOM refs ───────────────────────────────────────────────────────────────
+const $topbarPageName = document.getElementById('topbar-page-name');
+const $saveIndicator  = document.getElementById('save-indicator');
+const $sidebarList    = document.getElementById('sidebar-list');
+const $searchBox      = document.getElementById('search-box');
+const $noPage         = document.getElementById('no-page');
+const $viewMode       = document.getElementById('view-mode');
+const $editMode       = document.getElementById('edit-mode');
+const $viewTitle      = document.getElementById('view-title');
+const $viewMeta       = document.getElementById('view-meta');
+const $viewContent    = document.getElementById('view-content');
+const $editTitleInput = document.getElementById('edit-title-input');
+const $editTextarea   = document.getElementById('edit-textarea');
+const $newPageBtn     = document.getElementById('new-page-btn');
+const $newPageForm    = document.getElementById('new-page-form');
+const $newPageInput   = document.getElementById('new-page-input');
+const $newPageCreateBtn = document.getElementById('new-page-create-btn');
+const $confirmOverlay = document.getElementById('confirm-overlay');
+const $confirmTitle   = document.getElementById('confirm-title');
+const $confirmMsg     = document.getElementById('confirm-msg');
+const $confirmOkBtn   = document.getElementById('confirm-ok-btn');
+const $confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+const $sidebar        = document.getElementById('sidebar');
+const $sidebarOverlay = document.getElementById('sidebar-overlay');
+const $hamburgerBtn   = document.getElementById('hamburger-btn');
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function formatDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+  if (diff < 86400000*7) return `${Math.floor(diff/86400000)}d ago`;
+  return d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+}
+
+function flashSaved() {
+  $saveIndicator.classList.add('show');
+  setTimeout(() => $saveIndicator.classList.remove('show'), 2000);
+}
+
+function closeSidebar() {
+  $sidebar.classList.remove('open');
+  $sidebarOverlay.classList.remove('show');
+}
+
+function openSidebar() {
+  $sidebar.classList.add('open');
+  $sidebarOverlay.classList.add('show');
+}
+
+// ── Render sidebar ─────────────────────────────────────────────────────────
+function renderSidebar() {
+  const q = searchQuery.toLowerCase();
+  const filtered = pages
+    .filter(p => p.name.toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (filtered.length === 0) {
+    $sidebarList.innerHTML = `<div class="sidebar-${pages.length===0?'loading':'empty'}">${
+      pages.length===0 ? 'No pages yet' : 'No pages match your search'
+    }</div>`;
+    return;
+  }
+
+  $sidebarList.innerHTML = filtered.map(p => `
+    <div class="page-item${p.id===currentId?' active':''}" data-id="${p.id}" role="button" tabindex="0" aria-label="${p.name}">
+      <span class="page-item-name">${p.name}</span>
+      <button class="page-del-btn" data-id="${p.id}" aria-label="Delete ${p.name}" title="Delete">✕</button>
+    </div>
+  `).join('');
+}
+
+// ── Set view mode ──────────────────────────────────────────────────────────
+function showMode(m) {
+  mode = m;
+  $noPage.style.display       = m==='none'  ? 'flex' : 'none';
+  $viewMode.style.display     = m==='view'  ? 'flex' : 'none';
+  $editMode.style.display     = m==='edit'  ? 'flex' : 'none';
+}
+
+// ── Open page (view) ───────────────────────────────────────────────────────
+function openPage(id) {
+  const page = pages.find(p => p.id === id);
+  if (!page) return;
+  currentId = id;
+
+  $topbarPageName.textContent = page.name;
+  $topbarPageName.classList.add('has-page');
+  $viewTitle.textContent = page.name;
+  $viewMeta.textContent = page.data?.updated ? `Updated ${formatDate(page.data.updated)}` : '';
+  $viewContent.innerHTML = parseMarkdown(page.data?.body || '');
+
+  showMode('view');
+  renderSidebar();
+}
+
+// ── Open edit mode ─────────────────────────────────────────────────────────
+function openEdit(id) {
+  const page = id ? pages.find(p => p.id === id) : null;
+  currentId = id || null;
+  $editTitleInput.value = page ? page.name : '';
+  $editTextarea.value   = page ? (page.data?.body || '') : '';
+  showMode('edit');
+  $editTextarea.focus();
+  renderSidebar();
+}
+
+// ── Save ───────────────────────────────────────────────────────────────────
+async function savePage() {
+  const title = $editTitleInput.value.trim();
+  const body  = $editTextarea.value;
+  if (!title) { $editTitleInput.focus(); return; }
+
+  try {
+    const saved = await DB.save(currentId, title, body);
+    const newId = saved.id || currentId;
+
+    // Update local list
+    const idx = pages.findIndex(p => p.id === currentId);
+    const updated = {id: newId, name: title, data: {body, updated: Date.now()}};
+    if (idx >= 0) pages[idx] = updated; else pages.push(updated);
+
+    currentId = newId;
+    flashSaved();
+    openPage(newId);
+  } catch(e) {
+    alert('Save failed. Please try again.');
+  }
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────
+function deletePage(id) {
+  const page = pages.find(p => p.id === id);
+  if (!page) return;
+
+  showConfirm(
+    'Delete page?',
+    `"${page.name}" will be permanently deleted.`,
+    async () => {
+      await DB.del(id);
+      pages = pages.filter(p => p.id !== id);
+      if (currentId === id) {
+        currentId = null;
+        $topbarPageName.textContent = 'Select a page';
+        $topbarPageName.classList.remove('has-page');
+        showMode('none');
+      }
+      renderSidebar();
+    }
+  );
+}
+
+// ── Confirm dialog ─────────────────────────────────────────────────────────
+function showConfirm(title, msg, onOk) {
+  $confirmTitle.textContent = title;
+  $confirmMsg.textContent = msg;
+  confirmCallback = onOk;
+  $confirmOverlay.classList.add('show');
+}
+
+function closeConfirm() {
+  $confirmOverlay.classList.remove('show');
+  confirmCallback = null;
+}
+
+// ── New page ───────────────────────────────────────────────────────────────
+function showNewPageForm() {
+  $newPageBtn.style.display = 'none';
+  $newPageForm.classList.add('show');
+  $newPageInput.value = '';
+  $newPageInput.focus();
+}
+
+function hideNewPageForm() {
+  $newPageBtn.style.display = '';
+  $newPageForm.classList.remove('show');
+}
+
+async function createNewPage() {
+  const title = $newPageInput.value.trim();
+  if (!title) return;
+  hideNewPageForm();
+  currentId = null;
+  openEdit(null);
+  $editTitleInput.value = title;
+}
+
+// ── Init / load ────────────────────────────────────────────────────────────
+async function init() {
+  $sidebarList.innerHTML = '<div class="sidebar-loading">Loading…</div>';
+
+  try {
+    pages = await DB.list();
+  } catch(e) {
+    $sidebarList.innerHTML = '<div class="sidebar-empty">Failed to load pages.</div>';
+    return;
+  }
+
+  // Auto-create Home page on first run (Merebase only)
+  if (window.MB && pages.length === 0) {
+    const homeBody = `# Welcome to the Wiki\n\nThis is your team's growing knowledge base. Create pages, write in markdown, and keep everything organised.\n\n## Markdown Cheatsheet\n\n### Text formatting\n\n**Bold text** is wrapped in double asterisks. *Italic* uses single asterisks. ~~Strikethrough~~ uses double tildes. Inline \`code\` uses backticks.\n\n### Headings\n\n\`\`\`\n# Heading 1\n## Heading 2\n### Heading 3\n\`\`\`\n\n### Lists\n\nUnordered:\n- Item one\n- Item two\n- Item three\n\nOrdered:\n1. First step\n2. Second step\n3. Third step\n\n### Links\n\n[Link text](https://example.com)\n\n### Blockquote\n\n> This is a blockquote. Great for important callouts.\n\n### Code block\n\n\`\`\`\nconsole.log("Hello, wiki!");\n\`\`\`\n\n### Horizontal rule\n\n---\n\nHappy writing! 🎉`;
+    try {
+      const home = await DB.save(null, 'Home', homeBody);
+      pages = [home];
+    } catch(e) {
+      // ignore — show empty state
+    }
+  }
+
+  renderSidebar();
+
+  if (pages.length === 0) {
+    showMode('none');
+  } else {
+    // Sort alphabetically and open first page
+    const sorted = [...pages].sort((a, b) => a.name.localeCompare(b.name));
+    openPage(sorted[0].id);
+  }
+}
+
+// ── Event listeners ────────────────────────────────────────────────────────
+
+// Sidebar page clicks
+$sidebarList.addEventListener('click', e => {
+  const delBtn = e.target.closest('.page-del-btn');
+  if (delBtn) { deletePage(delBtn.dataset.id); return; }
+  const item = e.target.closest('.page-item');
+  if (item) {
+    openPage(item.dataset.id);
+    closeSidebar();
+  }
+});
+
+// Keyboard on page items
+$sidebarList.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const item = e.target.closest('.page-item');
+    if (item) { openPage(item.dataset.id); closeSidebar(); }
+  }
+});
+
+// Search
+$searchBox.addEventListener('input', e => {
+  searchQuery = e.target.value;
+  renderSidebar();
+});
+
+// Edit button
+document.getElementById('edit-btn').addEventListener('click', () => {
+  openEdit(currentId);
+});
+
+// Save button
+document.getElementById('save-btn').addEventListener('click', savePage);
+
+// Cancel button
+document.getElementById('cancel-btn').addEventListener('click', () => {
+  if (currentId && pages.find(p => p.id === currentId)) {
+    openPage(currentId);
+  } else {
+    currentId = null;
+    $topbarPageName.textContent = 'Select a page';
+    $topbarPageName.classList.remove('has-page');
+    showMode('none');
+    renderSidebar();
+  }
+});
+
+// Delete from view toolbar
+document.getElementById('view-delete-btn').addEventListener('click', () => {
+  deletePage(currentId);
+});
+
+// New page button
+$newPageBtn.addEventListener('click', showNewPageForm);
+$newPageCreateBtn.addEventListener('click', createNewPage);
+$newPageInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') createNewPage();
+  if (e.key === 'Escape') hideNewPageForm();
+});
+$newPageInput.addEventListener('blur', () => {
+  // Short delay so click on Create btn still fires
+  setTimeout(hideNewPageForm, 150);
+});
+
+// Confirm dialog
+$confirmOkBtn.addEventListener('click', () => {
+  if (confirmCallback) confirmCallback();
+  closeConfirm();
+});
+$confirmCancelBtn.addEventListener('click', closeConfirm);
+$confirmOverlay.addEventListener('click', e => {
+  if (e.target === $confirmOverlay) closeConfirm();
+});
+
+// Mobile sidebar
+$hamburgerBtn.addEventListener('click', () => {
+  if ($sidebar.classList.contains('open')) closeSidebar();
+  else openSidebar();
+});
+$sidebarOverlay.addEventListener('click', closeSidebar);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  const ctrl = e.ctrlKey || e.metaKey;
+
+  // Cmd/Ctrl+S — save
+  if (ctrl && e.key === 's') {
+    e.preventDefault();
+    if (mode === 'edit') savePage();
+  }
+
+  // Escape — cancel edit
+  if (e.key === 'Escape') {
+    if ($confirmOverlay.classList.contains('show')) {
+      closeConfirm();
+      return;
+    }
+    if ($newPageForm.classList.contains('show')) {
+      hideNewPageForm();
+      return;
+    }
+    if (mode === 'edit') {
+      document.getElementById('cancel-btn').click();
+    }
+  }
+});
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

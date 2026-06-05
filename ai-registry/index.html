@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Tool Registry</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F8F6F3; --surface: #FFFFFF; --border: #E8E3DD;
+  --ink: #1C1A18; --muted: #7A7068; --subtle: #B8B0A6;
+  --amber: #D97706; --amber-dk: #B45309; --amber-bg: rgba(217,119,6,0.08); --amber-border: rgba(217,119,6,0.25);
+  --green: #059669; --green-bg: rgba(5,150,105,0.08); --green-border: rgba(5,150,105,0.2);
+  --red: #DC2626; --red-bg: rgba(220,38,38,0.06); --red-border: rgba(220,38,38,0.2);
+  --blue: #2563EB; --blue-bg: rgba(37,99,235,0.06); --blue-border: rgba(37,99,235,0.2);
+  --purple: #7C3AED; --purple-bg: rgba(124,58,237,0.06);
+  --r: 8px; --shadow: 0 1px 3px rgba(28,26,24,0.06), 0 8px 24px rgba(28,26,24,0.04);
+}
+body { font-family: system-ui,-apple-system,sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; }
+
+/* ── Nav ── */
+nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; display: flex; align-items: stretch; position: sticky; top: 0; z-index: 10; }
+.nav-brand { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; padding: 0.9rem 0; margin-right: 1.5rem; text-decoration: none; color: var(--ink); flex-shrink: 0; }
+.nav-brand span { color: var(--amber); }
+.nav-links { display: flex; align-items: stretch; flex: 1; gap: 0; }
+.nav-link { font-size: 0.82rem; font-weight: 500; color: var(--muted); text-decoration: none; padding: 0 1rem; display: flex; align-items: center; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
+.nav-link:hover { color: var(--ink); }
+.nav-link.active { color: var(--amber-dk); border-bottom-color: var(--amber); font-weight: 600; }
+.nav-spacer { flex: 1; }
+.nav-count { font-size: 0.7rem; background: var(--ink); color: #fff; border-radius: 100px; padding: 2px 8px; font-weight: 700; align-self: center; }
+@media (max-width: 540px) { .nav-link { padding: 0 0.6rem; font-size: 0.75rem; } .nav-count { display: none; } }
+
+/* ── Page ── */
+.page { padding: 2rem 1.5rem; max-width: 1100px; margin: 0 auto; }
+
+/* ── Header ── */
+.board-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
+.board-title { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; }
+.board-title span { color: var(--amber); }
+.board-sub { font-size: 0.82rem; color: var(--muted); margin-top: 0.3rem; }
+
+/* ── Search ── */
+.search-row { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.search-input { flex: 1; min-width: 180px; padding: 0.65rem 0.9rem; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 0.875rem; font-family: inherit; background: var(--surface); color: var(--ink); outline: none; transition: border-color 0.15s; }
+.search-input:focus { border-color: var(--amber); }
+
+/* ── Status tabs ── */
+.status-tabs { display: flex; gap: 0; border: 1.5px solid var(--border); border-radius: var(--r); overflow: hidden; background: var(--surface); flex-shrink: 0; }
+.status-tab { font-size: 0.78rem; font-weight: 600; padding: 0.55rem 1rem; border: none; background: none; cursor: pointer; font-family: inherit; color: var(--muted); transition: all 0.15s; border-right: 1px solid var(--border); white-space: nowrap; }
+.status-tab:last-child { border-right: none; }
+.status-tab.active { background: var(--ink); color: #fff; }
+.status-tab.active.approved { background: var(--green); }
+.status-tab.active.experimental { background: var(--amber); }
+.status-tab.active.rejected { background: var(--red); }
+.tab-count { font-size: 0.65rem; background: rgba(255,255,255,0.25); border-radius: 100px; padding: 1px 5px; margin-left: 4px; }
+
+/* ── Category chips ── */
+.cat-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.cat-chip { font-size: 0.75rem; font-weight: 600; padding: 0.3rem 0.75rem; border-radius: 100px; border: 1.5px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; font-family: inherit; transition: all 0.12s; }
+.cat-chip:hover { border-color: var(--ink); color: var(--ink); }
+.cat-chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+/* ── Tool grid ── */
+.tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.tool-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem; box-shadow: var(--shadow); cursor: pointer; transition: all 0.15s; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 0.75rem; }
+.tool-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(28,26,24,0.1); border-color: var(--amber-border); }
+.tool-card-top { display: flex; align-items: flex-start; gap: 0.75rem; }
+.tool-avatar { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 800; flex-shrink: 0; }
+.tool-card-meta { flex: 1; min-width: 0; }
+.tool-name { font-size: 0.975rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tool-vendor { font-size: 0.72rem; color: var(--muted); }
+.tool-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tool-footer { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: auto; }
+.cat-tag { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 100px; }
+.status-badge { font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; }
+.badge-approved     { background: var(--green-bg);  color: var(--green);  border: 1px solid var(--green-border); }
+.badge-experimental { background: var(--amber-bg);  color: var(--amber-dk); border: 1px solid var(--amber-border); }
+.badge-rejected     { background: var(--red-bg);    color: var(--red);    border: 1px solid var(--red-border); }
+
+/* ── Tool detail ── */
+.tool-detail-header { display: flex; align-items: flex-start; gap: 1.25rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.tool-detail-avatar { width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; font-weight: 800; flex-shrink: 0; }
+.tool-detail-info { flex: 1; }
+.tool-detail-name { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.3rem; }
+.tool-detail-vendor { font-size: 0.875rem; color: var(--muted); margin-bottom: 0.6rem; }
+.tool-detail-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.5rem; box-shadow: var(--shadow); margin-bottom: 1rem; }
+.detail-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 1rem; }
+.detail-body { font-size: 0.95rem; line-height: 1.75; color: var(--ink); white-space: pre-wrap; }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.detail-field { }
+.detail-field-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.3rem; }
+.detail-field-value { font-size: 0.9rem; color: var(--ink); }
+.detail-field-value a { color: var(--amber-dk); text-decoration: none; }
+.detail-field-value a:hover { text-decoration: underline; }
+.review-chip { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 600; padding: 0.3rem 0.75rem; border-radius: 100px; }
+.review-soon { background: var(--amber-bg); color: var(--amber-dk); border: 1px solid var(--amber-border); }
+.review-ok   { background: var(--green-bg);  color: var(--green);     border: 1px solid var(--green-border); }
+.review-past { background: var(--red-bg);    color: var(--red);       border: 1px solid var(--red-border); }
+
+/* ── Forms ── */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.5rem; box-shadow: var(--shadow); margin-bottom: 1rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+.form-group { margin-bottom: 0; }
+.form-group + .form-group { margin-top: 0; }
+label { display: block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.35rem; }
+.text-input, .select-input, .textarea-input, .date-input { width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border); border-radius: var(--r); font-size: 0.875rem; font-family: inherit; background: var(--bg); color: var(--ink); outline: none; transition: border-color 0.15s; }
+.text-input:focus, .select-input:focus, .textarea-input:focus, .date-input:focus { border-color: var(--amber); }
+.textarea-input { resize: vertical; min-height: 100px; line-height: 1.65; }
+
+/* ── Buttons ── */
+.btn { padding: 0.65rem 1.1rem; border-radius: var(--r); border: none; font-size: 0.875rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--amber); color: #fff; }
+.btn-primary:hover { background: var(--amber-dk); }
+.btn-ghost { background: none; border: 1.5px solid var(--border); color: var(--muted); }
+.btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+.btn-danger { background: none; border: 1.5px solid var(--red-border); color: var(--red); }
+.btn-danger:hover { background: var(--red-bg); }
+.btn-green { background: var(--green); color: #fff; border: none; }
+.btn-green:hover { opacity: 0.9; }
+.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.75rem; }
+
+/* ── Admin list ── */
+.admin-tool { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 0.85rem 1.1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.85rem; }
+.admin-tool-info { flex: 1; min-width: 0; }
+.admin-tool-name { font-size: 0.875rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-tool-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.1rem; }
+.admin-tool-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+
+/* ── Utility ── */
+.empty-state { text-align: center; padding: 4rem 1rem; color: var(--muted); }
+.empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.empty-text { font-size: 0.9rem; margin-bottom: 1rem; }
+.loading { text-align: center; padding: 4rem; color: var(--muted); }
+.not-found { text-align: center; padding: 4rem 1rem; }
+.not-found h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
+.not-found p { font-size: 0.875rem; color: var(--muted); margin-bottom: 1.5rem; }
+.toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 0.7rem 1.25rem; border-radius: var(--r); font-size: 0.85rem; font-weight: 500; z-index: 999; opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; }
+.section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+.notice { padding: 0.85rem 1.1rem; border-radius: var(--r); font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.25rem; }
+.notice-amber { background: var(--amber-bg); border: 1px solid var(--amber-border); color: var(--amber-dk); }
+.notice-green { background: var(--green-bg); border: 1px solid var(--green-border); color: var(--green); }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">mere<span>base</span></a>
+  <div class="nav-links">
+    <a class="nav-link active" href="index.html">Registry</a>
+    <a class="nav-link" href="admin.html">Admin</a>
+    <div class="nav-spacer"></div>
+    <span class="nav-count" id="nav-count" style="display:none"></span>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="board-header">
+    <div>
+      <h1 class="board-title">AI Tool <span>Registry</span></h1>
+      <p class="board-sub">Approved, experimental, and reviewed AI tools for our organisation.</p>
+    </div>
+    <div class="search-row" style="margin:0">
+      <input type="search" class="search-input" id="search" placeholder="Search tools…" oninput="render()">
+    </div>
+  </div>
+
+  <div class="search-row">
+    <div class="status-tabs" id="status-tabs">
+      <button type="button" class="status-tab active" data-status="all" onclick="setStatus('all')">All <span class="tab-count" id="tc-all">0</span></button>
+      <button type="button" class="status-tab approved" data-status="approved" onclick="setStatus('approved')">Approved <span class="tab-count" id="tc-approved">0</span></button>
+      <button type="button" class="status-tab experimental" data-status="experimental" onclick="setStatus('experimental')">Experimental <span class="tab-count" id="tc-experimental">0</span></button>
+      <button type="button" class="status-tab rejected" data-status="rejected" onclick="setStatus('rejected')">Rejected <span class="tab-count" id="tc-rejected">0</span></button>
+    </div>
+  </div>
+
+  <div class="cat-chips" id="cat-chips"></div>
+  <div id="grid"><div class="loading">Loading…</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Default starter tools — loaded on first deploy via Admin → "Load starter tools"
+const STARTER_TOOLS = [
+  {
+    id:'claude', name:'Claude', vendor:'Anthropic', category:'Assistant',
+    status:'approved', description:'Advanced AI assistant for writing, analysis, coding, and research. Strong on nuance, long documents, and complex reasoning.',
+    enablementUrl:'', contact:'', nextReview:'2025-12-01', notes:'Preferred general-purpose AI assistant. Approved for all staff.'
+  },
+  {
+    id:'chatgpt', name:'ChatGPT', vendor:'OpenAI', category:'Assistant',
+    status:'approved', description:'General-purpose AI assistant. GPT-4o offers strong multimodal capability including image understanding and voice.',
+    enablementUrl:'', contact:'', nextReview:'2025-12-01', notes:'Approved. Enterprise plan required for data privacy compliance.'
+  },
+  {
+    id:'gemini', name:'Gemini', vendor:'Google', category:'Assistant',
+    status:'experimental', description:'Google\'s AI assistant, integrated into Workspace apps. Strong for Google Docs, Sheets, and Gmail summarisation.',
+    enablementUrl:'', contact:'', nextReview:'2025-09-01', notes:'Trialling in Google Workspace. Review data handling before broader rollout.'
+  },
+  {
+    id:'ms-copilot', name:'Microsoft Copilot', vendor:'Microsoft', category:'Productivity',
+    status:'approved', description:'AI embedded across Microsoft 365 — Word, Excel, PowerPoint, Outlook, and Teams. Summarises meetings, drafts emails, generates slides.',
+    enablementUrl:'', contact:'', nextReview:'2026-01-01', notes:'Approved for Microsoft 365 licence holders. IT to enable per department.'
+  },
+  {
+    id:'github-copilot', name:'GitHub Copilot', vendor:'GitHub / OpenAI', category:'Coding',
+    status:'approved', description:'AI code completion inside VS Code, JetBrains, and other editors. Suggests entire functions, explains code, and writes tests.',
+    enablementUrl:'', contact:'', nextReview:'2026-01-01', notes:'Approved for engineering team. Business plan required. Do not use on proprietary codebases without legal review.'
+  },
+  {
+    id:'cursor', name:'Cursor', vendor:'Anysphere', category:'Coding',
+    status:'experimental', description:'AI-native code editor built on VS Code. Allows natural language edits across entire codebases, not just line completions.',
+    enablementUrl:'', contact:'', nextReview:'2025-09-01', notes:'Experimental — engineering team only. Evaluate against Copilot for complex refactors.'
+  },
+  {
+    id:'perplexity', name:'Perplexity', vendor:'Perplexity AI', category:'Research',
+    status:'approved', description:'AI-powered search engine with cited sources. Better than Google for research questions requiring synthesis across multiple sources.',
+    enablementUrl:'', contact:'', nextReview:'2026-03-01', notes:'Approved for general research use. Pro plan available on request.'
+  },
+  {
+    id:'notionai', name:'Notion AI', vendor:'Notion', category:'Productivity',
+    status:'approved', description:'AI writing and summarisation built into Notion. Drafts documents, summarises pages, auto-fills databases, and answers questions about your workspace.',
+    enablementUrl:'', contact:'', nextReview:'2026-01-01', notes:'Approved for teams already on Notion. Included in Plus plan and above.'
+  },
+  {
+    id:'grammarly', name:'Grammarly', vendor:'Grammarly', category:'Writing',
+    status:'approved', description:'AI writing assistant for grammar, tone, clarity, and style. Works across web browsers, Microsoft Office, and Google Docs.',
+    enablementUrl:'', contact:'', nextReview:'2026-06-01', notes:'Approved. Business plan managed by IT. Do not connect personal accounts to work documents.'
+  },
+  {
+    id:'otter', name:'Otter.ai', vendor:'Otter.ai', category:'Productivity',
+    status:'approved', description:'Real-time meeting transcription and AI summaries. Integrates with Zoom, Teams, and Google Meet. Generates action items automatically.',
+    enablementUrl:'', contact:'', nextReview:'2025-12-01', notes:'Approved. Participants must be informed when recording. Check local recording consent laws.'
+  },
+  {
+    id:'fireflies', name:'Fireflies.ai', vendor:'Fireflies', category:'Productivity',
+    status:'experimental', description:'Meeting recorder with AI search across your conversation history. Can query past meetings by topic.',
+    enablementUrl:'', contact:'', nextReview:'2025-09-01', notes:'Experimental. Overlaps with Otter.ai — evaluate which better fits workflow before broad adoption.'
+  },
+  {
+    id:'midjourney', name:'Midjourney', vendor:'Midjourney', category:'Image',
+    status:'experimental', description:'High-quality AI image generation via Discord. Best-in-class for photorealistic and artistic imagery.',
+    enablementUrl:'', contact:'', nextReview:'2025-10-01', notes:'Experimental — creative and marketing teams only. Review IP ownership terms before using generated assets commercially.'
+  },
+  {
+    id:'dalle', name:'DALL·E', vendor:'OpenAI', category:'Image',
+    status:'experimental', description:'Image generation integrated into ChatGPT and the OpenAI API. Good for quick illustrations and concept visuals.',
+    enablementUrl:'', contact:'', nextReview:'2025-10-01', notes:'Experimental. IP and usage terms apply — do not use generated images in client-facing materials without legal sign-off.'
+  },
+  {
+    id:'runway', name:'Runway', vendor:'Runway', category:'Video',
+    status:'experimental', description:'AI video generation and editing. Gen-3 Alpha produces short video clips from text or image prompts. Also offers background removal and rotoscoping.',
+    enablementUrl:'', contact:'', nextReview:'2025-11-01', notes:'Experimental — video and content teams only. Watermark removal requires paid plan.'
+  },
+  {
+    id:'heygen', name:'HeyGen', vendor:'HeyGen', category:'Video',
+    status:'experimental', description:'AI avatar video creation. Generate professional-looking talking-head videos from a script without camera or studio.',
+    enablementUrl:'', contact:'', nextReview:'2025-11-01', notes:'Experimental. Strong potential for internal training videos. Requires brand/legal review for customer-facing use.'
+  },
+  {
+    id:'elevenlabs', name:'ElevenLabs', vendor:'ElevenLabs', category:'Voice',
+    status:'experimental', description:'AI voice synthesis and cloning. Produces natural-sounding speech in multiple languages. Used for narration, podcasts, and accessibility.',
+    enablementUrl:'', contact:'', nextReview:'2025-10-01', notes:'Experimental. Voice cloning of real people requires explicit consent. Do not clone voices without written permission.'
+  },
+  {
+    id:'synthesia', name:'Synthesia', vendor:'Synthesia', category:'Video',
+    status:'experimental', description:'AI video platform using digital avatars. Good for scalable training content and product demos without filming.',
+    enablementUrl:'', contact:'', nextReview:'2025-12-01', notes:'Experimental — L&D team evaluating for onboarding content. Review avatar licensing terms.'
+  },
+  {
+    id:'zapier-ai', name:'Zapier AI', vendor:'Zapier', category:'Automation',
+    status:'experimental', description:'Natural language workflow automation. Describe what you want to automate and Zapier builds the workflow.',
+    enablementUrl:'', contact:'', nextReview:'2025-10-01', notes:'Experimental. Test automations in sandbox before connecting production systems.'
+  },
+  {
+    id:'jasper', name:'Jasper', vendor:'Jasper AI', category:'Writing',
+    status:'rejected', description:'AI copywriting tool for marketing content. Pre-dates current generation of AI assistants.',
+    enablementUrl:'', contact:'', nextReview:'2026-06-01', notes:'Rejected — superseded by Claude and ChatGPT for general writing at significantly lower cost. Existing licences not to be renewed.'
+  },
+  {
+    id:'copyai', name:'Copy.ai', vendor:'Copy.ai', category:'Writing',
+    status:'rejected', description:'AI tool for short-form marketing copy — ads, product descriptions, email subject lines.',
+    enablementUrl:'', contact:'', nextReview:'2026-06-01', notes:'Rejected — use Claude or ChatGPT with appropriate prompting instead. Better output, no additional licence cost.'
+  },
+];
+</script>
+<script>
+const DB = window.MB ? {
+  async get(key) {
+    const r = await fetch(`${MB.api}/data?app_id=${MB.app_id}&key=${encodeURIComponent(key)}`, { credentials:'include' });
+    if (!r.ok) throw new Error('Load failed: ' + r.status);
+    return (await r.json()).value ?? null;
+  }
+} : {
+  async get(key) { return key === 'tools' ? JSON.parse(JSON.stringify(STARTER_TOOLS)) : null; }
+};
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg) { const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2500); }
+
+let tools=[], activeStatus='all', activeCat='all';
+
+async function load() {
+  try {
+    tools = (await DB.get('tools')) || STARTER_TOOLS;
+    updateCounts();
+    renderCats();
+    render();
+  } catch(e) {
+    document.getElementById('grid').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p class="empty-text">Could not load — ${esc(e.message)}</p></div>`;
+  }
+}
+
+function updateCounts() {
+  const cnt = document.getElementById('nav-count');
+  cnt.style.display=''; cnt.textContent = tools.length;
+  document.getElementById('tc-all').textContent         = tools.length;
+  document.getElementById('tc-approved').textContent    = tools.filter(t=>t.status==='approved').length;
+  document.getElementById('tc-experimental').textContent= tools.filter(t=>t.status==='experimental').length;
+  document.getElementById('tc-rejected').textContent    = tools.filter(t=>t.status==='rejected').length;
+}
+
+function renderCats() {
+  const cats = ['all', ...new Set(tools.map(t=>t.category).filter(Boolean).sort())];
+  document.getElementById('cat-chips').innerHTML = cats.map(c =>
+    `<button type="button" class="cat-chip ${c===activeCat?'active':''}" onclick="setCat('${esc(c)}')">${c==='all'?'All categories':esc(c)}</button>`
+  ).join('');
+}
+
+function setStatus(s) { activeStatus=s; document.querySelectorAll('.status-tab').forEach(t=>t.classList.toggle('active',t.dataset.status===s)); render(); }
+function setCat(c) { activeCat=c; renderCats(); render(); }
+
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const filtered = tools.filter(t => {
+    if (activeStatus !== 'all' && t.status !== activeStatus) return false;
+    if (activeCat !== 'all' && t.category !== activeCat) return false;
+    if (q && !t.name.toLowerCase().includes(q) && !t.vendor?.toLowerCase().includes(q) && !t.description?.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (!filtered.length) {
+    document.getElementById('grid').innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p class="empty-text">No tools match.</p></div>';
+    return;
+  }
+  document.getElementById('grid').innerHTML = `<div class="tools-grid">${filtered.map(toolCard).join('')}</div>`;
+}
+
+function toolCard(t) {
+  const av = avatarStyle(t);
+  return `<a class="tool-card" href="tool.html?id=${encodeURIComponent(t.id)}">
+    <div class="tool-card-top">
+      <div class="tool-avatar" style="${av.style}">${av.letter}</div>
+      <div class="tool-card-meta">
+        <div class="tool-name">${esc(t.name)}</div>
+        ${t.vendor ? `<div class="tool-vendor">${esc(t.vendor)}</div>` : ''}
+      </div>
+    </div>
+    <div class="tool-desc">${esc(t.description||'')}</div>
+    <div class="tool-footer">
+      <span class="cat-tag">${esc(t.category||'')}</span>
+      <span class="status-badge badge-${t.status||'experimental'}">${esc(t.status||'experimental')}</span>
+    </div>
+  </a>`;
+}
+
+function avatarStyle(t) {
+  const colors = {
+    Assistant:'#7C3AED','Coding':'#2563EB','Writing':'#059669','Image':'#D97706',
+    'Video':'#DC2626','Voice':'#0891B2','Research':'#4F46E5','Productivity':'#B45309','Automation':'#6D28D9'
+  };
+  const bg = colors[t.category] || '#1C1A18';
+  return { style: `background:${bg};color:#fff`, letter: (t.name||'?')[0].toUpperCase() };
+}
+
+load();
+</script>
+</body>
+</html>

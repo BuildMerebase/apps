@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analytics Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0D1117;--surface:#161B27;--surface2:#1E2638;--border:#252D3D;
+  --ink:#E2E8F0;--muted:#64748B;--subtle:#334155;
+  --green:#10B981;--green-dim:rgba(16,185,129,0.12);
+  --red:#F43F5E;--red-dim:rgba(244,63,94,0.12);
+  --blue:#3B82F6;--blue-dim:rgba(59,130,246,0.12);
+  --amber:#F59E0B;--amber-dim:rgba(245,158,11,0.12);
+  --purple:#8B5CF6;--purple-dim:rgba(139,92,246,0.12);
+  --cyan:#06B6D4;--cyan-dim:rgba(6,182,212,0.12);
+  --r:6px;
+}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:13px}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10}
+.brand{font-size:14px;font-weight:800;letter-spacing:-0.03em;color:var(--ink)}
+.brand span{color:var(--blue)}
+.header-sep{flex:1}
+.last-updated{font-size:11px;color:var(--muted)}
+.refresh-btn{font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--ink);cursor:pointer;font-family:inherit;transition:all 0.12s}
+.refresh-btn:hover{border-color:var(--blue);color:var(--blue)}
+.seed-btn{font-size:11px;font-weight:600;padding:5px 12px;border-radius:var(--r);border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.12s}
+.seed-btn:hover{color:var(--ink);border-color:var(--subtle)}
+
+main{padding:16px 20px;max-width:1400px;margin:0 auto}
+
+/* KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px}
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)}
+.kpi-value{font-size:22px;font-weight:800;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
+.kpi-delta{font-size:10px;font-weight:700;display:flex;align-items:center;gap:3px}
+.kpi-delta.pos{color:var(--green)}
+.kpi-delta.neg{color:var(--red)}
+.kpi-sparkline{margin-top:6px;height:28px}
+.kpi-accent{position:absolute;top:0;left:0;width:3px;height:100%;border-radius:3px 0 0 3px}
+
+/* Charts row */
+.charts-row{display:grid;grid-template-columns:1fr 340px;gap:10px;margin-bottom:14px}
+@media(max-width:900px){.charts-row{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.panel-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.panel-title span{color:var(--ink);font-size:13px;letter-spacing:normal;font-weight:600}
+.legend{display:flex;gap:12px;margin-left:auto}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);font-weight:600}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* Bottom row */
+.bottom-row{display:grid;grid-template-columns:1fr 360px;gap:10px}
+@media(max-width:900px){.bottom-row{grid-template-columns:1fr}}
+
+/* Donut */
+.donut-wrap{display:flex;align-items:center;gap:20px;height:220px}
+.donut-legend{display:flex;flex-direction:column;gap:8px;flex:1}
+.dl-item{display:flex;align-items:center;gap:8px}
+.dl-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.dl-name{font-size:11px;color:var(--muted);flex:1}
+.dl-pct{font-size:11px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.dl-bar{height:3px;border-radius:2px;margin-top:1px;opacity:0.5}
+
+/* Activity feed */
+.activity-list{display:flex;flex-direction:column;gap:0}
+.act-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.act-item:last-child{border-bottom:none}
+.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.act-body{flex:1;min-width:0}
+.act-event{font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act-detail{font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act-time{font-size:10px;color:var(--subtle);flex-shrink:0;margin-top:2px;font-variant-numeric:tabular-nums}
+
+.dot-success{background:var(--green)}
+.dot-danger{background:var(--red)}
+.dot-info{background:var(--blue)}
+.dot-neutral{background:var(--subtle)}
+
+.canvas-wrap{height:220px;position:relative}
+canvas{display:block}
+.loading-msg{text-align:center;padding:60px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Analytics <span>Dashboard</span></div>
+  <div class="header-sep"></div>
+  <div class="last-updated" id="last-updated">Loading…</div>
+  <button class="seed-btn" onclick="seedData()">Load sample data</button>
+  <button class="refresh-btn" onclick="init()">↻ Refresh</button>
+</header>
+
+<main>
+  <div class="kpi-grid" id="kpi-grid"><div class="loading-msg" style="grid-column:1/-1">Loading…</div></div>
+  <div class="charts-row">
+    <div class="panel">
+      <div class="panel-title">Revenue &amp; Orders — 30 day trend <div class="legend"><span class="legend-item"><span class="legend-dot" style="background:var(--blue)"></span>Revenue</span><span class="legend-item"><span class="legend-dot" style="background:var(--amber)"></span>Orders</span></div></div>
+      <div class="canvas-wrap"><canvas id="trend-chart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Traffic sources</div>
+      <div class="donut-wrap">
+        <canvas id="donut-chart" width="150" height="150" style="flex-shrink:0"></canvas>
+        <div class="donut-legend" id="donut-legend"></div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-row">
+    <div class="panel">
+      <div class="panel-title">Revenue by category <span id="cat-period">this vs last period</span></div>
+      <div class="canvas-wrap"><canvas id="bar-chart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Recent activity</div>
+      <div id="activity-list"><div class="loading-msg">Loading…</div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const SAMPLE = {
+  metrics:{
+    revenue:{label:'Revenue',value:284750,prev:253600,fmt:'$',suffix:'',sparkline:[210,225,218,232,245,238,252,261,255,270,268,284],color:'var(--blue)'},
+    users:{label:'Active users',value:18420,prev:16940,fmt:'',suffix:'',sparkline:[142,148,151,156,159,164,168,171,175,179,181,184],color:'var(--green)'},
+    orders:{label:'Orders',value:3847,prev:3926,fmt:'',suffix:'',sparkline:[320,335,310,340,350,330,360,380,365,375,390,384],color:'var(--amber)'},
+    conversion:{label:'Conversion',value:3.8,prev:3.4,fmt:'',suffix:'%',sparkline:[3.1,3.2,3.0,3.3,3.4,3.2,3.5,3.6,3.5,3.7,3.8,3.8],color:'var(--cyan)'},
+    avg_order:{label:'Avg order',value:74.02,prev:70.35,fmt:'$',suffix:'',sparkline:[65,67,66,68,70,69,71,72,71,73,74,74],color:'var(--purple)'},
+    sessions:{label:'Sessions',value:485300,prev:421000,fmt:'',suffix:'',sparkline:[38,39,41,40,42,44,43,45,46,47,48,48],color:'var(--red)'}
+  },
+  trend:{
+    labels:['May 5','','','','May 9','','','','May 13','','','','May 17','','','','May 21','','','','May 25','','','','May 29','','','','Jun 2','Jun 4'],
+    revenue:[8200,7800,9100,8500,9400,10200,9800,8900,9600,10100,9300,10500,11200,10800,9900,11500,10700,12100,11400,12800,11900,13200,12500,14100,13400,14800,13900,15200,14500,16100],
+    orders:[108,102,121,112,124,135,130,118,127,134,123,139,148,143,131,152,142,160,151,169,157,174,166,186,177,195,184,201,192,212]
+  },
+  sources:[
+    {name:'Organic search',value:42,color:'#3B82F6'},
+    {name:'Direct',value:24,color:'#8B5CF6'},
+    {name:'Social',value:18,color:'#EC4899'},
+    {name:'Email',value:10,color:'#F59E0B'},
+    {name:'Referral',value:6,color:'#10B981'}
+  ],
+  categories:[
+    {name:'Software',current:89400,prev:78200},
+    {name:'Services',current:67300,prev:71000},
+    {name:'Hardware',current:54200,prev:48900},
+    {name:'Training',current:38700,prev:35100},
+    {name:'Support',current:21800,prev:19400},
+    {name:'Consulting',current:13350,prev:11200}
+  ],
+  activity:[
+    {time:'2m ago',event:'Enterprise signup',detail:'Acme Corp — $12k/yr',type:'success'},
+    {time:'8m ago',event:'Payment received',detail:'$4,800 — Invoice #2841',type:'success'},
+    {time:'14m ago',event:'Churn alert',detail:'TechStart Inc — 2yr customer',type:'danger'},
+    {time:'31m ago',event:'Trial started',detail:'Globex — 14 seats',type:'info'},
+    {time:'45m ago',event:'Support ticket resolved',detail:'#8847 — API rate limits',type:'neutral'},
+    {time:'1hr ago',event:'New signup',detail:'DataFlow — Growth plan',type:'success'},
+    {time:'2hr ago',event:'Plan upgraded',detail:'Initech → Enterprise',type:'success'},
+    {time:'3hr ago',event:'Payment failed',detail:'MegaCorp — retry scheduled',type:'danger'}
+  ]
+};
+
+const MB_PRESENT = typeof window.MB !== 'undefined' && window.MB;
+const DB = MB_PRESENT ? {
+  async get(k){try{const r=await fetch(`${MB.api}/data?app_id=${MB.app_id}&key=${encodeURIComponent(k)}`,{credentials:'include'});return (await r.json()).value??null;}catch{return null;}},
+  async set(k,v){await fetch(`${MB.api}/data`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({app_id:MB.app_id,key:k,value:v})});}
+} : {
+  _s:{},
+  async get(k){return this._s[k]??null;},
+  async set(k,v){this._s[k]=v;}
+};
+
+function fmt(v,prefix,suffix){
+  if(suffix==='%') return prefix+(+v).toFixed(1)+suffix;
+  if(v>=1000000) return prefix+(v/1000000).toFixed(1)+'M'+suffix;
+  if(v>=1000) return prefix+(v/1000).toFixed(0)+'k'+suffix;
+  return prefix+v.toLocaleString()+suffix;
+}
+
+function drawSparkline(canvas,data,color){
+  const dpr=window.devicePixelRatio||1,w=canvas.offsetWidth,h=canvas.offsetHeight;
+  canvas.width=w*dpr;canvas.height=h*dpr;
+  const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  const min=Math.min(...data),max=Math.max(...data),range=max-min||1;
+  const pts=data.map((v,i)=>({x:i/(data.length-1)*w,y:h-(v-min)/range*h}));
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+  // fill
+  ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,color.replace('var(--','').replace(')',''));
+  ctx.fillStyle='rgba(59,130,246,0.12)';ctx.fill();
+}
+
+function renderKPIs(data){
+  const colors={'var(--blue)':'#3B82F6','var(--green)':'#10B981','var(--amber)':'#F59E0B','var(--cyan)':'#06B6D4','var(--purple)':'#8B5CF6','var(--red)':'#F43F5E'};
+  const grid=document.getElementById('kpi-grid');
+  grid.innerHTML='';
+  Object.values(data).forEach(m=>{
+    const delta=((m.value-m.prev)/m.prev*100);
+    const pos=delta>=0;
+    const hexColor=colors[m.color]||'#3B82F6';
+    const card=document.createElement('div');card.className='kpi';
+    card.innerHTML=`
+      <div class="kpi-accent" style="background:${hexColor}"></div>
+      <div class="kpi-label">${m.label}</div>
+      <div class="kpi-value">${fmt(m.value,m.fmt,m.suffix)}</div>
+      <div class="kpi-delta ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${Math.abs(delta).toFixed(1)}% vs prev</div>
+      <div class="kpi-sparkline"><canvas style="width:100%;height:28px"></canvas></div>
+    `;
+    grid.appendChild(card);
+    const cvs=card.querySelector('canvas');
+    requestAnimationFrame(()=>drawSparklineHex(cvs,m.sparkline,hexColor));
+  });
+}
+
+function drawSparklineHex(canvas,data,hex){
+  const dpr=window.devicePixelRatio||1,w=canvas.offsetWidth||120,h=28;
+  canvas.width=w*dpr;canvas.height=h*dpr;
+  const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  const min=Math.min(...data),max=Math.max(...data),range=max-min||1;
+  const pts=data.map((v,i)=>({x:i/(data.length-1)*w,y:h-(v-min)/range*(h-2)-1}));
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle=hex;ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
+}
+
+function drawTrendChart(data){
+  const canvas=document.getElementById('trend-chart');
+  const wrap=canvas.parentElement;
+  const dpr=window.devicePixelRatio||1,w=wrap.offsetWidth,h=wrap.offsetHeight;
+  canvas.width=w*dpr;canvas.height=h*dpr;canvas.style.width=w+'px';canvas.style.height=h+'px';
+  const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  const pad={t:10,r:50,b:32,l:58};
+  const cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
+  const rev=data.trend.revenue,ord=data.trend.orders,labs=data.trend.labels;
+  const rMax=Math.max(...rev)*1.1,rMin=0;
+  const oMax=Math.max(...ord)*1.1,oMin=0;
+  const n=rev.length;
+  const rx=i=>pad.l+i/(n-1)*cw;
+  const ry=v=>pad.t+ch-(v-rMin)/(rMax-rMin)*ch;
+  const oy=v=>pad.t+ch-(v-oMin)/(oMax-oMin)*ch;
+  // grid
+  ctx.strokeStyle='rgba(37,45,61,0.8)';ctx.lineWidth=1;
+  for(let i=0;i<5;i++){const y=pad.t+i*ch/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();}
+  // revenue area
+  ctx.beginPath();ctx.moveTo(rx(0),ry(rev[0]));
+  rev.forEach((_,i)=>i&&ctx.lineTo(rx(i),ry(rev[i])));
+  ctx.lineTo(rx(n-1),pad.t+ch);ctx.lineTo(rx(0),pad.t+ch);ctx.closePath();
+  const g=ctx.createLinearGradient(0,pad.t,0,pad.t+ch);
+  g.addColorStop(0,'rgba(59,130,246,0.25)');g.addColorStop(1,'rgba(59,130,246,0)');
+  ctx.fillStyle=g;ctx.fill();
+  // revenue line
+  ctx.beginPath();ctx.moveTo(rx(0),ry(rev[0]));
+  rev.forEach((_,i)=>i&&ctx.lineTo(rx(i),ry(rev[i])));
+  ctx.strokeStyle='#3B82F6';ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+  // orders line
+  ctx.beginPath();ctx.moveTo(rx(0),oy(ord[0]));
+  ord.forEach((_,i)=>i&&ctx.lineTo(rx(i),oy(ord[i])));
+  ctx.strokeStyle='#F59E0B';ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+  // X labels
+  ctx.fillStyle='#64748B';ctx.font=`${9*dpr/dpr}px system-ui`;ctx.textAlign='center';
+  labs.forEach((l,i)=>{if(l)ctx.fillText(l,rx(i),pad.t+ch+18);});
+  // Y labels left (revenue)
+  ctx.textAlign='right';ctx.fillStyle='#3B82F6';
+  for(let i=0;i<=4;i++){const v=rMax*i/4;ctx.fillText('$'+(v>=1000?Math.round(v/1000)+'k':Math.round(v)),pad.l-6,pad.t+ch-i*ch/4+4);}
+  // Y labels right (orders)
+  ctx.textAlign='left';ctx.fillStyle='#F59E0B';
+  for(let i=0;i<=4;i++){const v=oMax*i/4;if(i%2===0)ctx.fillText(Math.round(v),pad.l+cw+6,pad.t+ch-i*ch/4+4);}
+}
+
+function drawDonut(sources){
+  const canvas=document.getElementById('donut-chart');
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=150*dpr;canvas.height=150*dpr;canvas.style.width='150px';canvas.style.height='150px';
+  ctx.scale(dpr,dpr);
+  const cx=75,cy=75,r=60,ri=40,total=sources.reduce((a,s)=>a+s.value,0);
+  let angle=-Math.PI/2;
+  sources.forEach(s=>{
+    const sweep=s.value/total*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,angle,angle+sweep);ctx.closePath();
+    ctx.fillStyle=s.color;ctx.fill();
+    angle+=sweep;
+  });
+  ctx.beginPath();ctx.arc(cx,cy,ri,0,Math.PI*2);ctx.fillStyle='#161B27';ctx.fill();
+  ctx.fillStyle='#E2E8F0';ctx.font='bold 18px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(total+'%',cx,cy-7);
+  ctx.fillStyle='#64748B';ctx.font='10px system-ui';ctx.fillText('total',cx,cy+10);
+  // legend
+  const leg=document.getElementById('donut-legend');leg.innerHTML='';
+  sources.forEach(s=>{
+    const row=document.createElement('div');row.className='dl-item';
+    row.innerHTML=`<span class="dl-dot" style="background:${s.color}"></span><span class="dl-name">${s.name}</span><span class="dl-pct">${s.value}%</span>`;
+    const bar=document.createElement('div');bar.className='dl-bar';bar.style.cssText=`width:${s.value}%;background:${s.color}`;
+    row.appendChild(bar);leg.appendChild(row);
+  });
+}
+
+function drawBarChart(categories){
+  const canvas=document.getElementById('bar-chart');
+  const wrap=canvas.parentElement;
+  const dpr=window.devicePixelRatio||1,w=wrap.offsetWidth,h=wrap.offsetHeight;
+  canvas.width=w*dpr;canvas.height=h*dpr;canvas.style.width=w+'px';canvas.style.height=h+'px';
+  const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  const pad={t:10,r:20,b:36,l:68};
+  const cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
+  const all=[...categories.map(c=>c.current),...categories.map(c=>c.prev)];
+  const max=Math.max(...all)*1.1;
+  const grpW=cw/categories.length,barW=grpW*0.32,gap=grpW*0.04;
+  // grid
+  ctx.strokeStyle='rgba(37,45,61,0.8)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=pad.t+i*ch/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();}
+  categories.forEach((c,i)=>{
+    const x=pad.l+i*grpW+grpW/2;
+    const bh1=c.current/max*ch,bh2=c.prev/max*ch;
+    ctx.fillStyle='#3B82F6';ctx.fillRect(x-barW-gap/2,pad.t+ch-bh1,barW,bh1);
+    ctx.fillStyle='rgba(59,130,246,0.3)';ctx.fillRect(x+gap/2,pad.t+ch-bh2,barW,bh2);
+    ctx.fillStyle='#64748B';ctx.font=`${9}px system-ui`;ctx.textAlign='center';
+    ctx.fillText(c.name.substring(0,8),x,pad.t+ch+16);
+    // value label
+    ctx.fillStyle='#E2E8F0';ctx.font=`bold ${9}px system-ui`;
+    const vl=c.current>=1000?'$'+(c.current/1000).toFixed(0)+'k':'$'+c.current;
+    ctx.fillText(vl,x-barW/2-gap/2,pad.t+ch-bh1-4);
+  });
+  // Y labels
+  ctx.fillStyle='#64748B';ctx.font='9px system-ui';ctx.textAlign='right';
+  for(let i=0;i<=4;i++){const v=max*i/4;ctx.fillText('$'+(v>=1000?Math.round(v/1000)+'k':Math.round(v)),pad.l-6,pad.t+ch-i*ch/4+3);}
+}
+
+function renderActivity(items){
+  const el=document.getElementById('activity-list');
+  el.innerHTML=items.map(a=>`
+    <div class="act-item">
+      <div class="act-dot dot-${a.type}"></div>
+      <div class="act-body"><div class="act-event">${a.event}</div><div class="act-detail">${a.detail}</div></div>
+      <div class="act-time">${a.time}</div>
+    </div>
+  `).join('');
+}
+
+async function init(){
+  document.getElementById('last-updated').textContent='Loading…';
+  let d=await DB.get('dashboard');
+  if(!d) d=MB_PRESENT?null:SAMPLE;
+  if(!d){document.getElementById('kpi-grid').innerHTML='<div class="loading-msg" style="grid-column:1/-1">No data yet — click "Load sample data" to get started.</div>';document.getElementById('last-updated').textContent='No data';return;}
+  renderKPIs(d.metrics);
+  renderActivity(d.activity);
+  requestAnimationFrame(()=>{
+    drawTrendChart(d);
+    drawDonut(d.sources);
+    drawBarChart(d.categories);
+  });
+  document.getElementById('last-updated').textContent='Updated '+new Date().toLocaleTimeString();
+}
+
+async function seedData(){
+  await DB.set('dashboard',SAMPLE);
+  await init();
+}
+
+window.addEventListener('resize',()=>{
+  DB.get('dashboard').then(d=>{if(d||!MB_PRESENT){drawTrendChart(d||SAMPLE);drawBarChart((d||SAMPLE).categories);}});
+});
+
+init();
+</script>
+</body>
+</html>
